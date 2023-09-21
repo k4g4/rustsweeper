@@ -3,6 +3,8 @@ use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
+use crate::pages::{Game, HomePage};
+
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -30,29 +32,9 @@ pub fn App(cx: Scope) -> impl IntoView {
             <main>
                 <Routes>
                     <Route path="" view=|cx| view! { cx, <HomePage/> }/>
+                    <Route path="game" view=|cx| view! { cx, <Game/> }/>
                 </Routes>
             </main>
         </Router>
-    }
-}
-
-/// Renders the home page of your application.
-#[component]
-fn HomePage(cx: Scope) -> impl IntoView {
-    // Creates a reactive value to update the button
-    let (count, set_count) = create_signal(cx, 0);
-
-    view! { cx,
-        <h1>"Hello, world!"</h1>
-        <div class="buttons">
-            <div class="button-item">
-                <button on:click=move |_| set_count.update(|count| *count += 1)>
-                    "Clicked " {count} " time" { move || if count()==1 {""} else {"s"} }
-                </button>
-            </div>
-            <div class="button-item">
-                <button on:click=move |_| set_count(0)>"Reset"</button>
-            </div>
-        </div>
     }
 }
