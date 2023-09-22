@@ -1,4 +1,5 @@
-$light-gray: rgb(196, 196, 196);
+$gray: rgb(167, 167, 167);
+$light-gray: rgb(221, 221, 221);
 
 body {
 	font-family: sans-serif;
@@ -10,7 +11,7 @@ body {
 	
 	.button-item {
 		display: inline-block;
-		background-color: $light-gray;
+		background-color: $gray;
 		padding: 5px;
 		border-radius: 4px;
 		
@@ -28,23 +29,22 @@ body {
 	margin-right: auto;
 	height: 30vw;
 	width: 70vw;
-	background-color: $light-gray;
+	background-color: $gray;
+	border: .3vw solid black;
+	display: grid;
 
-	table {
-		height: 100%;
-		width: 100%;
-		border-collapse: collapse;
-
-		td {
-			border: 0.2vw solid black;
+	.cell {
+		border: .15vw solid black;
+	
+		svg {
+			position: absolute;
+			width: 3vw;
+			height: 3vw;
+			transform: translate(-1.5vw, 0.2vw);
 		}
-		
-		td.dug {
-			background-color: black;
-		}
-		
-		td:hover {
-			cursor: pointer;
-		}
+	}
+	
+	.dug {
+		background-color: $light-gray;
 	}
 }
