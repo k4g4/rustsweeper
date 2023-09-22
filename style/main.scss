@@ -47,4 +47,8 @@ body {
 	.dug {
 		background-color: $light-gray;
 	}
+
+	.cell:not(.dug):hover {
+		cursor: pointer;
+	}
 }
