@@ -77,6 +77,7 @@ struct GameState {
     dug_count: u32,
     game_over: bool,
     cell_states: Vec<CellState>,
+    set_score: Option<WriteSignal<String>>,
 }
 
 impl GameState {
@@ -85,6 +86,7 @@ impl GameState {
             dug_count: 0,
             game_over: false,
             cell_states: Vec::with_capacity((ROWS * COLUMNS) as usize),
+            set_score: None,
         };
 
         let mut rng = rand::thread_rng();
@@ -140,6 +142,10 @@ impl GameState {
         }
     }
 
+    fn register_score(&mut self, set_score: WriteSignal<String>) {
+        self.set_score = Some(set_score);
+    }
+
     fn register_cell(
         &mut self,
         row: isize,
@@ -147,6 +153,18 @@ impl GameState {
         set_cell_state: WriteSignal<(CellInteraction, CellKind)>,
     ) {
         self.get_mut(row, column).unwrap().signal = Some(set_cell_state);
+    }
+
+    fn update_score(&self) {
+        (self.set_score.unwrap())(if self.game_over {
+            "Game over!".to_string()
+        } else {
+            format!(
+                "{} point{}",
+                self.dug_count,
+                if self.dug_count == 1 { "" } else { "s" }
+            )
+        });
     }
 
     fn dig(&mut self, row: isize, column: isize) {
@@ -165,10 +183,7 @@ impl GameState {
             return;
         }
 
-        self.dug_count += 1;
-
         let Some(cell_state) = self.get_mut(row, column) else {
-            self.dug_count -= 1;
             return;
         };
 
@@ -180,11 +195,14 @@ impl GameState {
 
                 if cell_state.is_mine() {
                     self.game_over = true;
+                    self.update_score();
                     return;
                 }
 
+                self.dug_count += 1;
+
                 // after updating this cell, chain update any adjacent cells if this cell was 0
-                if matches!(cell_state.kind, CellKind::Clear(0)) {
+                if matches!(self.get(row, column).unwrap().kind, CellKind::Clear(0)) {
                     for (row_offset, column_offset) in ADJACENTS {
                         self.dig(row + row_offset, column + column_offset);
                     }
@@ -192,7 +210,7 @@ impl GameState {
             }
             CellInteraction::Dug => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
-                if let CellKind::Clear(mines) = cell_state.kind {
+                if let CellKind::Clear(mines) = self.get(row, column).unwrap().kind {
                     let flags = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
@@ -214,10 +232,9 @@ impl GameState {
                     }
                 }
             }
-            _ => {
-                self.dug_count -= 1;
-            }
+            _ => {}
         }
+        self.update_score();
     }
 
     fn flag(&mut self, row: isize, column: isize) {
@@ -260,7 +277,20 @@ pub fn Game(cx: Scope) -> impl IntoView {
             </div>
         </div>
 
+        <Score game_state />
+
         <Board game_state />
+    }
+}
+
+/// Displays the current score, or Game Over if you lost.
+#[component]
+fn Score(cx: Scope, game_state: WriteSignal<GameState>) -> impl IntoView {
+    let (score, set_score) = create_signal(cx, String::new());
+    game_state.update(|game_state| game_state.register_score(set_score));
+
+    view! { cx,
+        <h2 class="score">{score}</h2>
     }
 }
 
@@ -290,7 +320,7 @@ fn Cell(cx: Scope, row: isize, column: isize, game_state: WriteSignal<GameState>
     game_state.update(|game_state| game_state.register_cell(row, column, set_cell_state));
 
     view! { cx,
-        <div           
+        <div
             on:mouseup=move |event| {
                 match event.button() {
                     0 => {
