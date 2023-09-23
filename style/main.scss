@@ -1,9 +1,11 @@
 $gray: rgb(167, 167, 167);
 $light-gray: rgb(221, 221, 221);
+$tan: rgb(245, 218, 185);
 
 body {
-	font-family: sans-serif;
+	font-family: 'Trebuchet MS', Arial, sans-serif;
 	text-align: center;
+	background-color: $tan;
 }
 
 .buttons {
@@ -28,11 +30,11 @@ body {
 }
 
 .game-board {
-	margin-top: 100px;
+	margin-top: 80px;
 	margin-left: auto;
 	margin-right: auto;
-	height: 30vw;
-	width: 70vw;
+	height: 40vw;
+	width: 60vw;
 	background-color: $gray;
 	border: .3vw solid black;
 	display: grid;
@@ -42,9 +44,9 @@ body {
 	
 		svg {
 			position: absolute;
-			width: 3vw;
-			height: 3vw;
-			transform: translate(-1.5vw, 0.2vw);
+			width: 2.8vw;
+			height: 2.8vw;
+			transform: translate(-1.4vw, 0.1vw);
 		}
 	}
 	
