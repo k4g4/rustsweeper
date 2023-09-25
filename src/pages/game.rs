@@ -3,7 +3,7 @@ use leptos::*;
 use crate::game_logic::{CellInteraction, CellKind, GameState};
 
 const NUM_SVGS: [&str; 9] = [
-    "",
+    "", //just so index starts at 1
     include_str!("../../svgs/1.svg"),
     include_str!("../../svgs/2.svg"),
     include_str!("../../svgs/3.svg"),

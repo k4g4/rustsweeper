@@ -1,4 +1,4 @@
-use crate::error_template::{AppError, ErrorTemplate};
+use crate::pages::error_template::{AppError, ErrorTemplate};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
