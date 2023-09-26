@@ -1,29 +1,15 @@
 use cfg_if::cfg_if;
-use http::status::StatusCode;
 use leptos::*;
-use thiserror::Error;
+
+use crate::app_error::AppError;
 
 #[cfg(feature = "ssr")]
 use leptos_axum::ResponseOptions;
 
-#[derive(Clone, Debug, Error)]
-pub enum AppError {
-    #[error("Not Found")]
-    NotFound,
-}
-
-impl AppError {
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            AppError::NotFound => StatusCode::NOT_FOUND,
-        }
-    }
-}
-
 // A basic function to display errors served by the error boundaries.
 // Feel free to do more complicated things here than just displaying the error.
 #[component]
-pub fn ErrorTemplate(
+pub fn Error(
     cx: Scope,
     #[prop(optional)] outside_errors: Option<Errors>,
     #[prop(optional)] errors: Option<RwSignal<Errors>>,
@@ -68,7 +54,7 @@ pub fn ErrorTemplate(
                 view! {
                     cx,
                     <h2>{error_code.to_string()}</h2>
-                    <p>"Error: " {error_string}</p>
+                    <p>{error_string}</p>
                 }
             }
         />

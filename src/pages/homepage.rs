@@ -7,7 +7,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         <h1>Welcome to Rustsweeper!</h1>
         <div class="buttons">
             <div class="button-item">
-                <a href="game">New game</a>
+                <a href="/game?difficulty=easy">New game</a>
             </div>
         </div>
     }

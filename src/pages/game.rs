@@ -1,6 +1,9 @@
 use leptos::*;
+use leptos_router::*;
 
-use crate::game_logic::{CellInteraction, CellKind, GameState};
+use crate::app_error::AppError;
+use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState};
+use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
     "", //just so index starts at 1
@@ -28,18 +31,36 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
 
-    view! { cx,
-        <h1>Rustsweeper</h1>
-        <div class="buttons">
-            <div class="button-item">
-                <a href="/">Return</a>
-            </div>
-        </div>
+    let params = use_query::<GameParams>(cx);
 
-        <Score game_state />
+    params.with(|result| match result {
+        Ok(GameParams { difficulty }) => {
+            game_state.update(|game_state| game_state.set_difficulty(*difficulty));
 
-        <Board game_state />
-    }
+            view! { cx,
+                <h1>Rustsweeper</h1>
+                <div class="buttons">
+                    <div class="button-item">
+                        <a href="/">Return</a>
+                    </div>
+                </div>
+
+                <Score game_state />
+
+                <Board game_state />
+            }
+            .into_view(cx)
+        }
+        Err(_) => {
+            let mut outside_errors = Errors::default();
+            outside_errors.insert_with_default_key(AppError::InvalidDifficulty);
+
+            view! { cx,
+                <Error outside_errors />
+            }
+            .into_view(cx)
+        }
+    })
 }
 
 /// Displays the current score, or Game Over if you lost.
@@ -76,16 +97,17 @@ fn Row(cx: Scope, row: isize, game_state: WriteSignal<GameState>) -> impl IntoVi
 fn Cell(cx: Scope, row: isize, column: isize, game_state: WriteSignal<GameState>) -> impl IntoView {
     let (cell_state, set_cell_state) =
         create_signal(cx, (CellInteraction::Untouched, CellKind::Clear(0)));
+
     game_state.update(|game_state| game_state.register_cell(row, column, set_cell_state));
 
     view! { cx,
         <div
             on:mouseup=move |event| {
                 match event.button() {
-                    0 => {
+                    0 => { //left click
                         game_state.update(|game_state| game_state.dig(row, column));
                     }
-                    2 => {
+                    2 => { //right click
                         game_state.update(|game_state| game_state.flag(row, column));
                     }
                     _ => {}

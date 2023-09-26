@@ -4,4 +4,5 @@ pub use game::Game;
 pub mod homepage;
 pub use homepage::HomePage;
 
-pub mod error_template;
+pub mod error;
+pub use error::Error;

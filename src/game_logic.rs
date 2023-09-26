@@ -1,5 +1,9 @@
-use leptos::WriteSignal;
+use leptos::*;
+use leptos_router::*;
 use rand::Rng;
+use std::str::FromStr;
+
+use crate::app_error::AppError;
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),
@@ -11,6 +15,31 @@ const ADJACENTS: [(isize, isize); 8] = [
     (1, 0),
     (1, 1),
 ];
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
+}
+
+impl FromStr for Difficulty {
+    type Err = AppError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "easy" => Self::Easy,
+            "medium" => Self::Medium,
+            "hard" => Self::Hard,
+            _ => return Err(AppError::InvalidDifficulty),
+        })
+    }
+}
+
+#[derive(Params, PartialEq)]
+pub struct GameParams {
+    pub difficulty: Difficulty,
+}
 
 #[derive(Copy, Clone)]
 pub enum CellInteraction {
@@ -57,6 +86,7 @@ pub struct GameState {
     rows: isize,
     columns: isize,
     mines: isize,
+    difficulty: Option<Difficulty>,
     started: bool,
     game_over: bool,
     cell_states: Vec<CellState>,
@@ -69,6 +99,7 @@ impl GameState {
             rows,
             columns,
             mines,
+            difficulty: None,
             started: false,
             game_over: false,
             cell_states: (0..rows * columns)
@@ -80,6 +111,10 @@ impl GameState {
                 .collect(),
             set_score: None,
         }
+    }
+
+    pub fn set_difficulty(&mut self, difficulty: Difficulty) {
+        self.difficulty = Some(difficulty);
     }
 
     fn start(&mut self, row: isize, column: isize) {
@@ -183,7 +218,7 @@ impl GameState {
             format!(
                 "{} point{}",
                 dug_count,
-                if dug_count == 1 { "" } else { "s" }
+                if dug_count == 1 { "" } else { "s" },
             )
         });
     }
