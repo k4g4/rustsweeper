@@ -28,12 +28,13 @@ const MINES: isize = ((ROWS * COLUMNS) as f64 * 0.25) as isize;
 #[component]
 pub fn Game(cx: Scope) -> impl IntoView {
     let (_, game_state) = create_signal(cx, GameState::new(ROWS, COLUMNS, MINES));
+    provide_context(cx, game_state);
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
 
     let params = use_query::<GameParams>(cx);
 
-    params.with(|result| match result {
+    params.with(|params| match params {
         Ok(GameParams { difficulty }) => {
             game_state.update(|game_state| game_state.set_difficulty(*difficulty));
 
@@ -45,12 +46,13 @@ pub fn Game(cx: Scope) -> impl IntoView {
                     </div>
                 </div>
 
-                <Score game_state />
+                <Score />
 
-                <Board game_state />
+                <Board />
             }
             .into_view(cx)
         }
+
         Err(_) => {
             let mut outside_errors = Errors::default();
             outside_errors.insert_with_default_key(AppError::InvalidDifficulty);
@@ -65,9 +67,11 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
 /// Displays the current score, or Game Over if you lost.
 #[component]
-fn Score(cx: Scope, game_state: WriteSignal<GameState>) -> impl IntoView {
+fn Score(cx: Scope) -> impl IntoView {
     let (score, set_score) = create_signal(cx, String::new());
-    game_state.update(|game_state| game_state.register_score(set_score));
+    use_context::<WriteSignal<GameState>>(cx)
+        .expect("gamestate exists")
+        .update(|game_state| game_state.register_score(set_score));
 
     view! { cx,
         <h2 class="score">{score}</h2>
@@ -76,27 +80,28 @@ fn Score(cx: Scope, game_state: WriteSignal<GameState>) -> impl IntoView {
 
 /// The game board.
 #[component]
-fn Board(cx: Scope, game_state: WriteSignal<GameState>) -> impl IntoView {
+fn Board(cx: Scope) -> impl IntoView {
     view! { cx,
         <div class="game-board">
-            { (0..ROWS).map(|row| view!{ cx, <Row row game_state /> }).collect_view(cx) }
+            { (0..ROWS).map(|row| view!{ cx, <Row row /> }).collect_view(cx) }
         </div>
     }
 }
 
 /// A game board row.
 #[component]
-fn Row(cx: Scope, row: isize, game_state: WriteSignal<GameState>) -> impl IntoView {
+fn Row(cx: Scope, row: isize) -> impl IntoView {
     (0..COLUMNS)
-        .map(|column| view! { cx, <Cell row column game_state /> })
+        .map(|column| view! { cx, <Cell row column /> })
         .collect_view(cx)
 }
 
 /// A cell on the board.
 #[component]
-fn Cell(cx: Scope, row: isize, column: isize, game_state: WriteSignal<GameState>) -> impl IntoView {
+fn Cell(cx: Scope, row: isize, column: isize) -> impl IntoView {
     let (cell_state, set_cell_state) =
         create_signal(cx, (CellInteraction::Untouched, CellKind::Clear(0)));
+    let game_state = use_context::<WriteSignal<GameState>>(cx).expect("gamestate exists");
 
     game_state.update(|game_state| game_state.register_cell(row, column, set_cell_state));
 

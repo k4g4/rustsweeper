@@ -162,11 +162,8 @@ impl GameState {
     }
 
     fn index(&self, row: isize, column: isize) -> Option<usize> {
-        if row < 0 || column < 0 || row >= self.rows || column >= self.columns {
-            None
-        } else {
-            Some((row * self.columns + column) as usize)
-        }
+        (row >= 0 && column >= 0 && row < self.rows && column < self.columns)
+            .then_some((row * self.columns + column) as usize)
     }
 
     fn get(&self, row: isize, column: isize) -> Option<&CellState> {
@@ -250,6 +247,7 @@ impl GameState {
                     }
                 }
             }
+
             CellInteraction::Dug => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
                 if let CellKind::Clear(mines) = self.get(row, column).unwrap().kind {
