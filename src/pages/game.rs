@@ -1,3 +1,5 @@
+use chrono::Duration;
+use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 
@@ -22,12 +24,11 @@ const FLAG_SVG: &str = include_str!("../../svgs/flag.svg");
 
 const ROWS: isize = 12;
 const COLUMNS: isize = 18;
-const MINES: isize = ((ROWS * COLUMNS) as f64 * 0.25) as isize;
 
 /// Renders the game.
 #[component]
 pub fn Game(cx: Scope) -> impl IntoView {
-    let (_, game_state) = create_signal(cx, GameState::new(ROWS, COLUMNS, MINES));
+    let (_, game_state) = create_signal(cx, GameState::new(ROWS, COLUMNS));
     provide_context(cx, game_state);
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
@@ -39,14 +40,23 @@ pub fn Game(cx: Scope) -> impl IntoView {
             game_state.update(|game_state| game_state.set_difficulty(*difficulty));
 
             view! { cx,
-                <h1>Rustsweeper</h1>
+                <h1>"Rustsweeper"</h1>
                 <div class="buttons">
                     <div class="button-item">
-                        <a href="/">Return</a>
+                        <A
+                            href=""
+                            on:click=move |ev| {
+                                ev.prevent_default();
+                                location().reload().expect("reloaded");
+                            }
+                        >"New Game"</A>
+                    </div>
+                    <div class="button-item">
+                        <A href="/">"Return"</A>
                     </div>
                 </div>
 
-                <Score />
+                <Info />
 
                 <Board />
             }
@@ -65,16 +75,47 @@ pub fn Game(cx: Scope) -> impl IntoView {
     })
 }
 
-/// Displays the current score, or Game Over if you lost.
+/// Displays the timer and current score.
 #[component]
-fn Score(cx: Scope) -> impl IntoView {
+fn Info(cx: Scope) -> impl IntoView {
     let (score, set_score) = create_signal(cx, String::new());
+    let (seconds, set_seconds) = create_signal(cx, None);
+    let (show_timer, set_show_timer) = create_signal(cx, false);
+    let _timer = create_local_resource(cx, seconds, move |seconds| async move {
+        if let Some(seconds) = seconds {
+            TimeoutFuture::new(1_000).await;
+            set_seconds(Some(seconds + 1));
+        }
+    });
+    let start_timer = Box::new(move || {
+        set_seconds(Some(0));
+        set_show_timer(true);
+    });
+    let stop_timer = Box::new(move || {
+        let seconds = seconds();
+        set_seconds(None);
+        set_show_timer(false);
+        seconds.expect("timer started")
+    });
+
     use_context::<WriteSignal<GameState>>(cx)
         .expect("gamestate exists")
-        .update(|game_state| game_state.register_score(set_score));
+        .update(|game_state| {
+            game_state.register_score(set_score);
+            game_state.register_start_stop_timer(start_timer, stop_timer);
+        });
 
     view! { cx,
-        <h2 class="score">{score}</h2>
+        <h2 class="info">{move || {
+            if show_timer() {
+                seconds().map(|seconds| {
+                    let time = Duration::seconds(seconds as i64);
+                    format!("{:02}:{:02}", time.num_minutes() % 99, time.num_seconds() % 60)
+                })
+            } else {
+                None
+            }
+        }}<br />{score}</h2>
     }
 }
 

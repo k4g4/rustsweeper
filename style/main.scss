@@ -8,13 +8,20 @@ body {
 	background-color: $tan;
 }
 
+.settings {
+	margin-top: 40px;
+}
+
 .buttons {
+	margin-top: 20px;
 	width: 100%;
 	
 	.button-item {
 		display: inline-block;
 		background-color: $gray;
 		padding: 5px;
+		margin-left: 10px;
+		margin-right: 10px;
 		border-radius: 4px;
 		
 		a {
@@ -25,7 +32,7 @@ body {
 	}
 }
 
-.score {
+.info {
 	height: 20px;
 }
 

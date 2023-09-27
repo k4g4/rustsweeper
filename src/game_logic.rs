@@ -1,7 +1,7 @@
 use leptos::*;
 use leptos_router::*;
 use rand::Rng;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use crate::app_error::AppError;
 
@@ -16,8 +16,9 @@ const ADJACENTS: [(isize, isize); 8] = [
     (1, 1),
 ];
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Default)]
 pub enum Difficulty {
+    #[default]
     Easy,
     Medium,
     Hard,
@@ -33,6 +34,20 @@ impl FromStr for Difficulty {
             "hard" => Self::Hard,
             _ => return Err(AppError::InvalidDifficulty),
         })
+    }
+}
+
+impl Display for Difficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Easy => "easy",
+                Self::Medium => "medium",
+                Self::Hard => "hard",
+            }
+        )
     }
 }
 
@@ -85,21 +100,25 @@ impl CellState {
 pub struct GameState {
     rows: isize,
     columns: isize,
-    mines: isize,
-    difficulty: Option<Difficulty>,
+    mines: Option<isize>,
     started: bool,
     game_over: bool,
     cell_states: Vec<CellState>,
     set_score: Option<WriteSignal<String>>,
+    start_timer: Option<Box<dyn FnOnce()>>,
+    stop_timer: Option<Box<dyn FnOnce() -> u32>>,
 }
 
 impl GameState {
-    pub fn new(rows: isize, columns: isize, mines: isize) -> Self {
+    const EASY_PROB: f64 = 0.15;
+    const MEDIUM_PROB: f64 = 0.25;
+    const HARD_PROB: f64 = 0.35;
+
+    pub fn new(rows: isize, columns: isize) -> Self {
         Self {
             rows,
             columns,
-            mines,
-            difficulty: None,
+            mines: None,
             started: false,
             game_over: false,
             cell_states: (0..rows * columns)
@@ -110,21 +129,32 @@ impl GameState {
                 })
                 .collect(),
             set_score: None,
+            start_timer: None,
+            stop_timer: None,
         }
     }
 
     pub fn set_difficulty(&mut self, difficulty: Difficulty) {
-        self.difficulty = Some(difficulty);
+        self.mines = Some(
+            ((self.rows * self.columns) as f64
+                * match difficulty {
+                    Difficulty::Easy => Self::EASY_PROB,
+                    Difficulty::Medium => Self::MEDIUM_PROB,
+                    Difficulty::Hard => Self::HARD_PROB,
+                }) as isize,
+        );
     }
 
     fn start(&mut self, row: isize, column: isize) {
+        self.start_timer.take().expect("registered start timer")();
+
         let mut rng = rand::thread_rng();
 
         let exclude = Vec::from_iter(std::iter::once((0, 0)).chain(ADJACENTS).filter_map(
             |(row_offset, column_offset)| self.index(row + row_offset, column + column_offset),
         ));
 
-        for _ in 0..self.mines {
+        for _ in 0..self.mines.expect("difficulty set") {
             let cell_state = loop {
                 let index = rng.gen_range(0..self.rows * self.columns) as usize;
 
@@ -180,6 +210,15 @@ impl GameState {
         self.set_score = Some(set_score);
     }
 
+    pub fn register_start_stop_timer(
+        &mut self,
+        start_timer: Box<dyn FnOnce()>,
+        stop_timer: Box<dyn FnOnce() -> u32>,
+    ) {
+        self.start_timer = Some(start_timer);
+        self.stop_timer = Some(stop_timer);
+    }
+
     pub fn register_cell(
         &mut self,
         row: isize,
@@ -205,10 +244,11 @@ impl GameState {
             }
         }
 
-        (self.set_score.unwrap())(if failed {
+        (self.set_score.expect("registered score"))(if failed {
             self.game_over = true;
-            "Game over!".into()
-        } else if dug_count == self.rows * self.columns - self.mines {
+            let time = self.stop_timer.take().expect("registered stop timer")();
+            format!("Game over! {} seconds and {} points", time, dug_count)
+        } else if dug_count == self.rows * self.columns - self.mines.expect("difficulty set") {
             self.game_over = true;
             "You won!".into()
         } else {
@@ -299,6 +339,9 @@ impl GameState {
             }
         }
 
-        cell_state.signal.unwrap()((cell_state.interaction, cell_state.kind));
+        cell_state.signal.expect("cell signal registered")((
+            cell_state.interaction,
+            cell_state.kind,
+        ));
     }
 }
