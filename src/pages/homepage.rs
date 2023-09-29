@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_router::*;
 
 use crate::game_logic::{Difficulty, Size};
 
@@ -7,7 +8,7 @@ use crate::game_logic::{Difficulty, Size};
 pub fn HomePage(cx: Scope) -> impl IntoView {
     view! { cx,
         <h1>"Rustsweeper"</h1>
-        <form method="GET" action="game" id="settings">
+        <Form method="GET" action="game">
             <div class="settings">
                 <h4>"Settings"</h4>
                 <table>
@@ -16,7 +17,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                             <label for="difficulty">"Difficulty:"</label>
                         </td>
                         <td>
-                            <select name="difficulty" form="settings">
+                            <select name="difficulty">
                                 <option value=|| Difficulty::Easy.to_string()>"Easy"</option>
                                 <option value=|| Difficulty::Medium.to_string()>"Medium"</option>
                                 <option value=|| Difficulty::Hard.to_string()>"Hard"</option>
@@ -28,7 +29,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                             <label for="size">"Board Size:"</label>
                         </td>
                         <td>
-                            <select name="size" form="settings">
+                            <select name="size">
                                 <option value=|| Size::Small.to_string()>"Small"</option>
                                 <option value=|| Size::Medium.to_string()>"Medium"</option>
                                 <option value=|| Size::Large.to_string()>"Large"</option>
@@ -42,6 +43,6 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                     <input type="submit" value="New Game" />
                 </div>
             </div>
-        </form>
+        </Form>
     }
 }
