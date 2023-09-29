@@ -2,8 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use rand::Rng;
 use std::{fmt::Display, str::FromStr};
-
-use crate::app_error::AppError;
+use thiserror::Error;
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),
@@ -16,6 +15,31 @@ const ADJACENTS: [(isize, isize); 8] = [
     (1, 1),
 ];
 
+const EASY: &str = "easy";
+const MEDIUM: &str = "medium";
+const HARD: &str = "hard";
+const SMALL: &str = "small";
+const LARGE: &str = "large";
+
+#[derive(Error, Debug)]
+pub enum GameParamsError {
+    InvalidSize,
+    InvalidDifficulty,
+}
+
+impl Display for GameParamsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                GameParamsError::InvalidSize => "Invalid size",
+                GameParamsError::InvalidDifficulty => "Invalid difficulty",
+            }
+        )
+    }
+}
+
 #[derive(PartialEq, Copy, Clone, Default)]
 pub enum Difficulty {
     #[default]
@@ -25,14 +49,14 @@ pub enum Difficulty {
 }
 
 impl FromStr for Difficulty {
-    type Err = AppError;
+    type Err = GameParamsError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            "easy" => Self::Easy,
-            "medium" => Self::Medium,
-            "hard" => Self::Hard,
-            _ => return Err(AppError::InvalidDifficulty),
+            EASY => Self::Easy,
+            MEDIUM => Self::Medium,
+            HARD => Self::Hard,
+            _ => return Err(GameParamsError::InvalidDifficulty),
         })
     }
 }
@@ -43,21 +67,58 @@ impl Display for Difficulty {
             f,
             "{}",
             match self {
-                Self::Easy => "easy",
-                Self::Medium => "medium",
-                Self::Hard => "hard",
+                Self::Easy => EASY,
+                Self::Medium => MEDIUM,
+                Self::Hard => HARD,
             }
         )
     }
 }
 
-#[derive(Params, PartialEq)]
-pub struct GameParams {
-    pub difficulty: Difficulty,
+#[derive(PartialEq, Copy, Clone, Default)]
+pub enum Size {
+    #[default]
+    Small,
+    Medium,
+    Large,
 }
 
-#[derive(Copy, Clone)]
+impl FromStr for Size {
+    type Err = GameParamsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            SMALL => Self::Small,
+            MEDIUM => Self::Medium,
+            LARGE => Self::Large,
+            _ => return Err(GameParamsError::InvalidSize),
+        })
+    }
+}
+
+impl Display for Size {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Small => SMALL,
+                Self::Medium => MEDIUM,
+                Self::Large => LARGE,
+            }
+        )
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Params)]
+pub struct GameParams {
+    pub difficulty: Difficulty,
+    pub size: Size,
+}
+
+#[derive(Copy, Clone, Default)]
 pub enum CellInteraction {
+    #[default]
     Untouched,
     Dug,
     Flagged,
@@ -69,6 +130,13 @@ pub enum CellKind {
     Clear(u32),
 }
 
+impl Default for CellKind {
+    fn default() -> Self {
+        Self::Clear(0)
+    }
+}
+
+#[derive(Default, Clone)]
 struct CellState {
     interaction: CellInteraction,
     kind: CellKind,
@@ -97,10 +165,11 @@ impl CellState {
     }
 }
 
+#[derive(Default)]
 pub struct GameState {
     rows: isize,
     columns: isize,
-    mines: Option<isize>,
+    mines: isize,
     started: bool,
     game_over: bool,
     cell_states: Vec<CellState>,
@@ -114,35 +183,36 @@ impl GameState {
     const MEDIUM_PROB: f64 = 0.25;
     const HARD_PROB: f64 = 0.35;
 
-    pub fn new(rows: isize, columns: isize) -> Self {
-        Self {
-            rows,
-            columns,
-            mines: None,
-            started: false,
-            game_over: false,
-            cell_states: (0..rows * columns)
-                .map(|_| CellState {
-                    interaction: CellInteraction::Untouched,
-                    kind: CellKind::Clear(0),
-                    signal: None,
-                })
-                .collect(),
-            set_score: None,
-            start_timer: None,
-            stop_timer: None,
-        }
-    }
+    const SMALL_SIZE: (isize, isize) = (8, 12);
+    const MEDIUM_SIZE: (isize, isize) = (10, 15);
+    const LARGE_SIZE: (isize, isize) = (12, 18);
 
-    pub fn set_difficulty(&mut self, difficulty: Difficulty) {
-        self.mines = Some(
-            ((self.rows * self.columns) as f64
-                * match difficulty {
+    pub fn new(params: GameParams) -> Self {
+        let (rows, columns) = match params.size {
+            Size::Small => Self::SMALL_SIZE,
+            Size::Medium => Self::MEDIUM_SIZE,
+            Size::Large => Self::LARGE_SIZE,
+        };
+        let total = (rows * columns) as usize;
+
+        Self {
+            rows: rows,
+            columns: columns,
+            cell_states: vec![CellState::default(); total],
+            mines: (total as f64
+                * match params.difficulty {
                     Difficulty::Easy => Self::EASY_PROB,
                     Difficulty::Medium => Self::MEDIUM_PROB,
                     Difficulty::Hard => Self::HARD_PROB,
                 }) as isize,
-        );
+            start_timer: None,
+            stop_timer: None,
+            ..Self::default()
+        }
+    }
+
+    pub fn dimensions(&self) -> (isize, isize) {
+        (self.rows, self.columns)
     }
 
     fn start(&mut self, row: isize, column: isize) {
@@ -154,7 +224,7 @@ impl GameState {
             |(row_offset, column_offset)| self.index(row + row_offset, column + column_offset),
         ));
 
-        for _ in 0..self.mines.expect("difficulty set") {
+        for _ in 0..self.mines {
             let cell_state = loop {
                 let index = rng.gen_range(0..self.rows * self.columns) as usize;
 
@@ -248,7 +318,7 @@ impl GameState {
             self.game_over = true;
             let time = self.stop_timer.take().expect("registered stop timer")();
             format!("Game over! {} seconds and {} points", time, dug_count)
-        } else if dug_count == self.rows * self.columns - self.mines.expect("difficulty set") {
+        } else if dug_count == self.rows * self.columns - self.mines {
             self.game_over = true;
             "You won!".into()
         } else {

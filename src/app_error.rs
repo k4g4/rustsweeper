@@ -1,19 +1,20 @@
 use http::status::StatusCode;
+use leptos_router::ParamsError;
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 pub enum AppError {
     #[error("Not Found")]
     NotFound,
-    #[error("Invalid Difficulty")]
-    InvalidDifficulty,
+    #[error("Error reading new game settings: {0}")]
+    ParamsError(#[from] ParamsError),
 }
 
 impl AppError {
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::NotFound => StatusCode::NOT_FOUND,
-            AppError::InvalidDifficulty => StatusCode::BAD_REQUEST,
+            AppError::ParamsError(_) => StatusCode::BAD_REQUEST,
         }
     }
 }

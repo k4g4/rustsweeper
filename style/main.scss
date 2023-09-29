@@ -1,6 +1,6 @@
-$gray: rgb(167, 167, 167);
-$light-gray: rgb(221, 221, 221);
-$tan: rgb(245, 218, 185);
+$gray: rgb(155, 155, 155);
+$light-gray: rgb(196, 196, 196);
+$tan: rgb(236, 222, 202);
 
 body {
 	font-family: 'Trebuchet MS', Arial, sans-serif;
@@ -10,6 +10,31 @@ body {
 
 .settings {
 	margin-top: 40px;
+	background-color: $gray;
+	display: inline-block;
+	text-align: left;
+	padding: 15px;
+	border-radius: 4px;
+	font-size: 20px;
+
+	h4 {
+		margin-top: 0px;
+		margin-bottom: 15px;
+		text-align: center;
+	}
+
+	.setting {
+
+		select {
+			margin-top: 5px;
+			margin-left: 10px;
+			background: $light-gray;
+			border-radius: 4px;
+			border: none;
+			font-size: 18px;
+			cursor: pointer;
+		}
+	}
 }
 
 .buttons {
@@ -19,13 +44,21 @@ body {
 	.button-item {
 		display: inline-block;
 		background-color: $gray;
-		padding: 5px;
+		padding: 8px;
 		margin-left: 10px;
 		margin-right: 10px;
 		border-radius: 4px;
+		font-size: 20px;
 		
-		a {
+		input {
+			border: none;
+			background: none;
 			font-size: 20px;
+			padding: 0px;
+			cursor: pointer;
+		}
+
+		a {
 			text-decoration: none;
 			color: black;
 		}
@@ -37,31 +70,47 @@ body {
 }
 
 .game-board {
+	background-color: $gray;
 	margin-top: 80px;
 	margin-left: auto;
 	margin-right: auto;
-	height: 40vw;
-	width: 60vw;
-	background-color: $gray;
-	border: .3vw solid black;
 	display: grid;
+	border: 4px solid black;
+	
+	.cell {
+		border: 2px solid black;
+	}
+
+	.dug {
+		background-color: $light-gray;
+	}
 
 	.cell {
-		border: .15vw solid black;
 	
 		svg {
 			position: absolute;
-			width: 2.8vw;
-			height: 2.8vw;
-			transform: translate(-1.4vw, 0.1vw);
+			width: 40px;
+			height: 40px;
+			transform: translate(-20px, 3px);
 		}
-	}
-	
-	.dug {
-		background-color: $light-gray;
 	}
 
 	.cell:not(.dug):hover {
 		cursor: pointer;
 	}
+}
+
+.game-board.large {
+	height: 600px;
+	width: 900px;
+}
+
+.game-board.medium {
+	height: 500px;
+	width: 750px;
+}
+
+.game-board.small {
+	height: 400px;
+	width: 600px;
 }

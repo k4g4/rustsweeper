@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
 use leptos::*;
+use leptos_router::A;
 
 use crate::app_error::AppError;
 
@@ -58,5 +59,10 @@ pub fn Error(
                 }
             }
         />
+        <div class="buttons">
+            <div class="button-item">
+                <A href="/">"Return"</A>
+            </div>
+        </div>
     }
 }

@@ -4,7 +4,7 @@ use leptos::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState};
+use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState, Size};
 use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
@@ -22,22 +22,20 @@ const NUM_SVGS: [&str; 9] = [
 const BOMB_SVG: &str = include_str!("../../svgs/bomb.svg");
 const FLAG_SVG: &str = include_str!("../../svgs/flag.svg");
 
-const ROWS: isize = 12;
-const COLUMNS: isize = 18;
-
 /// Renders the game.
 #[component]
 pub fn Game(cx: Scope) -> impl IntoView {
-    let (_, game_state) = create_signal(cx, GameState::new(ROWS, COLUMNS));
-    provide_context(cx, game_state);
+    let params = use_query::<GameParams>(cx);
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
 
-    let params = use_query::<GameParams>(cx);
-
     params.with(|params| match params {
-        Ok(GameParams { difficulty }) => {
-            game_state.update(|game_state| game_state.set_difficulty(*difficulty));
+        Ok(params) => {
+            let game_state = GameState::new(*params);
+            let (rows, columns) = game_state.dimensions();
+
+            let (_, game_state) = create_signal(cx, game_state);
+            provide_context(cx, game_state);
 
             view! { cx,
                 <h1>"Rustsweeper"</h1>
@@ -58,14 +56,14 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
                 <Info />
 
-                <Board />
+                <Board rows columns size=params.size />
             }
             .into_view(cx)
         }
 
-        Err(_) => {
+        Err(error) => {
             let mut outside_errors = Errors::default();
-            outside_errors.insert_with_default_key(AppError::InvalidDifficulty);
+            outside_errors.insert_with_default_key(AppError::ParamsError(error.clone()));
 
             view! { cx,
                 <Error outside_errors />
@@ -121,18 +119,18 @@ fn Info(cx: Scope) -> impl IntoView {
 
 /// The game board.
 #[component]
-fn Board(cx: Scope) -> impl IntoView {
+fn Board(cx: Scope, rows: isize, columns: isize, size: Size) -> impl IntoView {
     view! { cx,
-        <div class="game-board">
-            { (0..ROWS).map(|row| view!{ cx, <Row row /> }).collect_view(cx) }
+        <div class={ format!("game-board {size}") }>
+            { (0..rows).map(|row| view!{ cx, <Row row columns /> }).collect_view(cx) }
         </div>
     }
 }
 
 /// A game board row.
 #[component]
-fn Row(cx: Scope, row: isize) -> impl IntoView {
-    (0..COLUMNS)
+fn Row(cx: Scope, row: isize, columns: isize) -> impl IntoView {
+    (0..columns)
         .map(|column| view! { cx, <Cell row column /> })
         .collect_view(cx)
 }
