@@ -1,3 +1,4 @@
+use chrono::Duration;
 use leptos::*;
 use leptos_router::*;
 use rand::Rng;
@@ -20,6 +21,15 @@ const MEDIUM: &str = "medium";
 const HARD: &str = "hard";
 const SMALL: &str = "small";
 const LARGE: &str = "large";
+
+pub fn format_seconds(seconds: u32) -> String {
+    let time = Duration::seconds(seconds as i64);
+    format!(
+        "{:02}:{:02}",
+        time.num_minutes() % 99,
+        time.num_seconds() % 60
+    )
+}
 
 #[derive(Error, Debug)]
 pub enum GameParamsError {
@@ -280,7 +290,7 @@ impl GameState {
         self.set_score = Some(set_score);
     }
 
-    pub fn register_start_stop_timer(
+    pub fn register_timer(
         &mut self,
         start_timer: Box<dyn FnOnce()>,
         stop_timer: Box<dyn FnOnce() -> u32>,
@@ -314,20 +324,21 @@ impl GameState {
             }
         }
 
-        (self.set_score.expect("registered score"))(if failed {
-            self.game_over = true;
-            let time = self.stop_timer.take().expect("registered stop timer")();
-            format!("Game over! {} seconds and {} points", time, dug_count)
-        } else if dug_count == self.rows * self.columns - self.mines {
-            self.game_over = true;
-            "You won!".into()
-        } else {
-            format!(
-                "{} point{}",
-                dug_count,
-                if dug_count == 1 { "" } else { "s" },
-            )
-        });
+        (self.set_score.expect("registered score"))(
+            if failed || dug_count == self.rows * self.columns - self.mines {
+                self.game_over = true;
+                let time = self.stop_timer.take().expect("registered stop timer")();
+
+                format!(
+                    "{}!\nScore - {} points\nTime - {}",
+                    if failed { "Game over" } else { "You won" },
+                    dug_count,
+                    format_seconds(time)
+                )
+            } else {
+                format!("{} points", dug_count)
+            },
+        );
     }
 
     pub fn dig(&mut self, row: isize, column: isize) {
@@ -340,6 +351,12 @@ impl GameState {
             return;
         }
 
+        self.dig_inner(row, column);
+
+        self.update_score();
+    }
+
+    fn dig_inner(&mut self, row: isize, column: isize) {
         let Some(cell_state) = self.get_mut(row, column) else {
             return;
         };
@@ -353,7 +370,7 @@ impl GameState {
                 // after updating this cell, chain update any adjacent cells if this cell was 0
                 if matches!(cell_state.kind, CellKind::Clear(0)) {
                     for (row_offset, column_offset) in ADJACENTS {
-                        self.dig(row + row_offset, column + column_offset);
+                        self.dig_inner(row + row_offset, column + column_offset);
                     }
                 }
             }
@@ -375,7 +392,7 @@ impl GameState {
                                 self.get(row + row_offset, column + column_offset)
                             {
                                 if cell_state.is_untouched() {
-                                    self.dig(row + row_offset, column + column_offset);
+                                    self.dig_inner(row + row_offset, column + column_offset);
                                 }
                             }
                         }
@@ -384,8 +401,6 @@ impl GameState {
             }
             _ => {}
         }
-
-        self.update_score();
     }
 
     pub fn flag(&mut self, row: isize, column: isize) {

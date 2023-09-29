@@ -1,10 +1,11 @@
-use chrono::Duration;
+use std::iter;
+
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState, Size};
+use crate::game_logic::{format_seconds, CellInteraction, CellKind, GameParams, GameState, Size};
 use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
@@ -29,7 +30,7 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
 
-    params.with(|params| match params {
+    params.with_untracked(|params| match params {
         Ok(params) => {
             let game_state = GameState::new(*params);
             let (rows, columns) = game_state.dimensions();
@@ -47,10 +48,14 @@ pub fn Game(cx: Scope) -> impl IntoView {
                                 ev.prevent_default();
                                 location().reload().expect("reloaded");
                             }
-                        >"New Game"</A>
+                        >
+                            "New Game"
+                        </A>
                     </div>
                     <div class="button-item">
-                        <A href="/">"Return"</A>
+                        <A href="/">
+                            "Return"
+                        </A>
                     </div>
                 </div>
 
@@ -100,20 +105,34 @@ fn Info(cx: Scope) -> impl IntoView {
         .expect("gamestate exists")
         .update(|game_state| {
             game_state.register_score(set_score);
-            game_state.register_start_stop_timer(start_timer, stop_timer);
+            game_state.register_timer(start_timer, stop_timer);
         });
 
     view! { cx,
-        <h2 class="info">{move || {
-            if show_timer() {
-                seconds().map(|seconds| {
-                    let time = Duration::seconds(seconds as i64);
-                    format!("{:02}:{:02}", time.num_minutes() % 99, time.num_seconds() % 60)
-                })
-            } else {
-                None
+        <h2 class="info">
+            {
+                move || {
+                    show_timer().then(move || {
+                        view! { cx,
+                            {seconds().map(format_seconds)}
+                            <br />
+                        }
+                    })
+                }
             }
-        }}<br />{score}</h2>
+            {
+                move || {
+                    // iter::repeat and take(3) so that this view has static size of 3.
+                    // Otherwise <For /> is necessary here.
+                    score().lines().chain(iter::repeat("")).map(|line| {
+                        view! { cx,
+                            {line.to_string()}
+                            <br />
+                        }
+                    }).take(3).collect_view(cx)
+                }
+            }
+        </h2>
     }
 }
 
