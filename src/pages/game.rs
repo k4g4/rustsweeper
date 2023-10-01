@@ -83,26 +83,26 @@ pub fn Game(cx: Scope) -> impl IntoView {
 fn Info(cx: Scope) -> impl IntoView {
     let (score, set_score) = create_signal(cx, String::new());
     let (seconds, set_seconds) = create_signal(cx, None);
-    let (show_timer, set_show_timer) = create_signal(cx, false);
     let _timer = create_local_resource(cx, seconds, move |seconds| async move {
+        if seconds.is_none() {
+            return;
+        }
+        TimeoutFuture::new(1_000).await;
         if let Some(seconds) = seconds {
-            TimeoutFuture::new(1_000).await;
             set_seconds(Some(seconds + 1));
         }
     });
     let start_timer = Box::new(move || {
         set_seconds(Some(0));
-        set_show_timer(true);
     });
     let stop_timer = Box::new(move || {
         let seconds = seconds();
         set_seconds(None);
-        set_show_timer(false);
         seconds.expect("timer started")
     });
 
     use_context::<WriteSignal<GameState>>(cx)
-        .expect("gamestate exists")
+        .expect("game state exists")
         .update(|game_state| {
             game_state.register_score(set_score);
             game_state.register_timer(start_timer, stop_timer);
@@ -112,9 +112,9 @@ fn Info(cx: Scope) -> impl IntoView {
         <h2 class="info">
             {
                 move || {
-                    show_timer().then(move || {
+                    seconds().map(|seconds| {
                         view! { cx,
-                            {seconds().map(format_seconds)}
+                            {format_seconds(seconds)}
                             <br />
                         }
                     })
