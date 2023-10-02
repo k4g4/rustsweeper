@@ -1,11 +1,8 @@
-use std::iter;
-
-use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::game_logic::{format_seconds, CellInteraction, CellKind, GameParams, GameState, Size};
+use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState, Size};
 use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
@@ -32,11 +29,12 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
     params.with_untracked(|params| match params {
         Ok(params) => {
-            let game_state = GameState::new(*params);
+            let game_state = GameState::new(cx, *params);
             let (rows, columns) = game_state.dimensions();
 
-            let (_, game_state) = create_signal(cx, game_state);
-            provide_context(cx, game_state);
+            let (game_state_read, game_state_write) = create_signal(cx, game_state);
+            provide_context(cx, game_state_read);
+            provide_context(cx, game_state_write);
 
             view! { cx,
                 <h1>"Rustsweeper"</h1>
@@ -81,56 +79,14 @@ pub fn Game(cx: Scope) -> impl IntoView {
 /// Displays the timer and current score.
 #[component]
 fn Info(cx: Scope) -> impl IntoView {
-    let (score, set_score) = create_signal(cx, String::new());
-    let (seconds, set_seconds) = create_signal(cx, None);
-    let _timer = create_local_resource(cx, seconds, move |seconds| async move {
-        if seconds.is_none() {
-            return;
-        }
-        TimeoutFuture::new(1_000).await;
-        if let Some(seconds) = seconds {
-            set_seconds(Some(seconds + 1));
-        }
-    });
-    let start_timer = Box::new(move || {
-        set_seconds(Some(0));
-    });
-    let stop_timer = Box::new(move || {
-        let seconds = seconds();
-        set_seconds(None);
-        seconds.expect("timer started")
-    });
-
-    use_context::<WriteSignal<GameState>>(cx)
+    let info = use_context::<ReadSignal<GameState>>(cx)
         .expect("game state exists")
-        .update(|game_state| {
-            game_state.register_score(set_score);
-            game_state.register_timer(start_timer, stop_timer);
-        });
+        .with(|game_state| game_state.info_signal());
 
     view! { cx,
         <h2 class="info">
             {
-                move || {
-                    seconds().map(|seconds| {
-                        view! { cx,
-                            {format_seconds(seconds)}
-                            <br />
-                        }
-                    })
-                }
-            }
-            {
-                move || {
-                    // iter::repeat and take(3) so that this view has static size of 3.
-                    // Otherwise <For /> is necessary here.
-                    score().lines().chain(iter::repeat("")).map(|line| {
-                        view! { cx,
-                            {line.to_string()}
-                            <br />
-                        }
-                    }).take(3).collect_view(cx)
-                }
+                move || info.with(|info| info.to_view(cx))
             }
         </h2>
     }
@@ -159,19 +115,19 @@ fn Row(cx: Scope, row: isize, columns: isize) -> impl IntoView {
 fn Cell(cx: Scope, row: isize, column: isize) -> impl IntoView {
     let (cell_state, set_cell_state) =
         create_signal(cx, (CellInteraction::Untouched, CellKind::Clear(0)));
-    let game_state = use_context::<WriteSignal<GameState>>(cx).expect("gamestate exists");
+    let game_state_write = use_context::<WriteSignal<GameState>>(cx).expect("game state exists");
 
-    game_state.update(|game_state| game_state.register_cell(row, column, set_cell_state));
+    game_state_write.update(|game_state| game_state.register_cell(row, column, set_cell_state));
 
     view! { cx,
         <div
             on:mouseup=move |event| {
                 match event.button() {
                     0 => { //left click
-                        game_state.update(|game_state| game_state.dig(row, column));
+                        game_state_write.update(|game_state| game_state.dig(row, column));
                     }
                     2 => { //right click
-                        game_state.update(|game_state| game_state.flag(row, column));
+                        game_state_write.update(|game_state| game_state.flag(row, column));
                     }
                     _ => {}
                 }

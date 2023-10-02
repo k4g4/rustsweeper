@@ -1,8 +1,13 @@
+use std::{
+    fmt::{Display, Write},
+    str::FromStr,
+};
+
 use chrono::Duration;
+use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 use rand::Rng;
-use std::{fmt::Display, str::FromStr};
 use thiserror::Error;
 
 const ADJACENTS: [(isize, isize); 8] = [
@@ -21,15 +26,6 @@ const MEDIUM: &str = "medium";
 const HARD: &str = "hard";
 const SMALL: &str = "small";
 const LARGE: &str = "large";
-
-pub fn format_seconds(seconds: u32) -> String {
-    let time = Duration::seconds(seconds as i64);
-    format!(
-        "{:02}:{:02}",
-        time.num_minutes() % 99,
-        time.num_seconds() % 60
-    )
-}
 
 #[derive(Error, Debug)]
 pub enum GameParamsError {
@@ -126,6 +122,78 @@ pub struct GameParams {
     pub size: Size,
 }
 
+#[derive(Default, Copy, Clone)]
+pub enum GameStatus {
+    #[default]
+    Idle,
+    Started,
+    GameOver,
+    Victory,
+}
+
+#[derive(Default)]
+pub struct GameInfo {
+    elapsed_seconds: u32,
+    score: u32,
+    status: GameStatus,
+}
+
+impl GameInfo {
+    pub fn to_view(&self, cx: Scope) -> impl IntoView {
+        let time = {
+            let duration = Duration::seconds(self.elapsed_seconds as i64);
+            format!(
+                "{:02}:{:02}",
+                duration.num_minutes() % 99,
+                duration.num_seconds() % 60
+            )
+        };
+
+        match self.status {
+            GameStatus::Started => {
+                view! { cx,
+                    {format!("{} points", self.score)}
+                    <br />
+                    {time}
+                    <br />
+                    ""
+                    <br />
+                }
+            }
+            GameStatus::GameOver => {
+                view! { cx,
+                    "Game over!"
+                    <br />
+                    "Score - "{format!("{} points", self.score)}
+                    <br />
+                    "Time - " {time}
+                    <br />
+                }
+            }
+            GameStatus::Victory => {
+                view! { cx,
+                    "You won!"
+                    <br />
+                    "Score - " {format!("{} points", self.score)}
+                    <br />
+                    "Time - " {time}
+                    <br />
+                }
+            }
+            GameStatus::Idle => {
+                view! { cx,
+                    ""
+                    <br />
+                    ""
+                    <br />
+                    ""
+                    <br />
+                }
+            }
+        }
+    }
+}
+
 #[derive(Copy, Clone, Default)]
 pub enum CellInteraction {
     #[default]
@@ -175,17 +243,15 @@ impl CellState {
     }
 }
 
-#[derive(Default)]
 pub struct GameState {
     rows: isize,
     columns: isize,
     mines: isize,
-    started: bool,
-    game_over: bool,
     cell_states: Vec<CellState>,
-    set_score: Option<WriteSignal<String>>,
-    start_timer: Option<Box<dyn FnOnce()>>,
-    stop_timer: Option<Box<dyn FnOnce() -> u32>>,
+    status: GameStatus,
+    info: ReadSignal<GameInfo>,
+    set_info: WriteSignal<GameInfo>,
+    timer: Action<(), ()>,
 }
 
 impl GameState {
@@ -197,13 +263,32 @@ impl GameState {
     const MEDIUM_SIZE: (isize, isize) = (10, 15);
     const LARGE_SIZE: (isize, isize) = (12, 18);
 
-    pub fn new(params: GameParams) -> Self {
+    pub fn new(cx: Scope, params: GameParams) -> Self {
         let (rows, columns) = match params.size {
             Size::Small => Self::SMALL_SIZE,
             Size::Medium => Self::MEDIUM_SIZE,
             Size::Large => Self::LARGE_SIZE,
         };
         let total = (rows * columns) as usize;
+
+        let (info, set_info) = create_signal(cx, GameInfo::default());
+
+        let timer = create_action(cx, move |&()| async move {
+            for second in 0..u32::MAX {
+                let mut stop = false;
+                set_info.update(|info| {
+                    if matches!(info.status, GameStatus::Started) {
+                        info.elapsed_seconds = second;
+                    } else {
+                        stop = true;
+                    }
+                });
+                if stop {
+                    break;
+                }
+                TimeoutFuture::new(1_000).await;
+            }
+        });
 
         Self {
             rows: rows,
@@ -215,9 +300,10 @@ impl GameState {
                     Difficulty::Medium => Self::MEDIUM_PROB,
                     Difficulty::Hard => Self::HARD_PROB,
                 }) as isize,
-            start_timer: None,
-            stop_timer: None,
-            ..Self::default()
+            status: GameStatus::Idle,
+            info,
+            set_info,
+            timer,
         }
     }
 
@@ -225,8 +311,12 @@ impl GameState {
         (self.rows, self.columns)
     }
 
+    pub fn info_signal(&self) -> ReadSignal<GameInfo> {
+        self.info
+    }
+
     fn start(&mut self, row: isize, column: isize) {
-        self.start_timer.take().expect("registered start timer")();
+        self.timer.dispatch(());
 
         let mut rng = rand::thread_rng();
 
@@ -268,7 +358,7 @@ impl GameState {
             }
         }
 
-        self.started = true;
+        self.status = GameStatus::Started;
     }
 
     fn index(&self, row: isize, column: isize) -> Option<usize> {
@@ -284,19 +374,6 @@ impl GameState {
     fn get_mut(&mut self, row: isize, column: isize) -> Option<&mut CellState> {
         self.index(row, column)
             .map(|index| &mut self.cell_states[index])
-    }
-
-    pub fn register_score(&mut self, set_score: WriteSignal<String>) {
-        self.set_score = Some(set_score);
-    }
-
-    pub fn register_timer(
-        &mut self,
-        start_timer: Box<dyn FnOnce()>,
-        stop_timer: Box<dyn FnOnce() -> u32>,
-    ) {
-        self.start_timer = Some(start_timer);
-        self.stop_timer = Some(stop_timer);
     }
 
     pub fn register_cell(
@@ -324,35 +401,32 @@ impl GameState {
             }
         }
 
-        (self.set_score.expect("registered score"))(
-            if failed || dug_count == self.rows * self.columns - self.mines {
-                self.game_over = true;
-                let time = self.stop_timer.take().expect("registered stop timer")();
+        if failed {
+            self.status = GameStatus::GameOver;
+        } else if dug_count as isize == self.rows * self.columns - self.mines {
+            self.status = GameStatus::Victory;
+        }
 
-                format!(
-                    "{}!\nScore - {} points\nTime - {}",
-                    if failed { "Game over" } else { "You won" },
-                    dug_count,
-                    format_seconds(time)
-                )
-            } else {
-                format!("{} points", dug_count)
-            },
-        );
+        self.set_info.update(|info| {
+            info.score = dug_count;
+            info.status = self.status;
+        });
     }
 
     pub fn dig(&mut self, row: isize, column: isize) {
-        // first click is free, wipe out any nearby mines
-        if !self.started {
-            self.start(row, column);
-        }
+        match self.status {
+            GameStatus::Idle => {
+                self.start(row, column);
+            }
 
-        if self.game_over {
-            return;
+            GameStatus::GameOver | GameStatus::Victory => {
+                return;
+            }
+
+            _ => {}
         }
 
         self.dig_inner(row, column);
-
         self.update_score();
     }
 
@@ -404,7 +478,7 @@ impl GameState {
     }
 
     pub fn flag(&mut self, row: isize, column: isize) {
-        if self.game_over {
+        if matches!(self.status, GameStatus::GameOver | GameStatus::Victory) {
             return;
         }
 
