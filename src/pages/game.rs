@@ -1,3 +1,4 @@
+use leptos::logging::*;
 use leptos::*;
 use leptos_router::*;
 
@@ -81,13 +82,11 @@ pub fn Game() -> impl IntoView {
 fn Info() -> impl IntoView {
     let info = use_context::<ReadSignal<GameState>>()
         .expect("game state exists")
-        .with(|game_state| game_state.info_signal());
+        .with_untracked(|game_state| game_state.info_signal());
 
     view! {
         <h2 class="info">
-            {
-                move || info.with(|info| info.to_view())
-            }
+            { move || info.with(|info| info.to_view()) }
         </h2>
     }
 }

@@ -6,7 +6,7 @@ use crate::game_logic::{Difficulty, Size};
 /// Renders the home page.
 #[component]
 pub fn HomePage() -> impl IntoView {
-    view! { cx,
+    view! {
         <h1>"Rustsweeper"</h1>
         <Form method="GET" action="game">
             <div class="settings">

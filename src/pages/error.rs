@@ -34,7 +34,7 @@ pub fn Error(
     // Only the response code for the first error is actually sent from the server
     // this may be customized by the specific application
     cfg_if! { if #[cfg(feature="ssr")] {
-        let response = use_context::<ResponseOptions>(cx);
+        let response = use_context::<ResponseOptions>();
         if let Some(response) = response {
             response.set_status(errors[0].status_code());
         }
@@ -50,9 +50,8 @@ pub fn Error(
             // renders each item to a view
             children= move |error| {
                 let error_string = error.1.to_string();
-                let error_code= error.1.status_code();
+                let error_code = error.1.status_code();
                 view! {
-                    cx,
                     <h2>{error_code.to_string()}</h2>
                     <p>{error_string}</p>
                 }
