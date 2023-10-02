@@ -1,7 +1,4 @@
-use std::{
-    fmt::{Display, Write},
-    str::FromStr,
-};
+use std::{fmt::Display, str::FromStr};
 
 use chrono::Duration;
 use gloo_timers::future::TimeoutFuture;
@@ -134,7 +131,8 @@ pub enum GameStatus {
 #[derive(Default)]
 pub struct GameInfo {
     elapsed_seconds: u32,
-    score: u32,
+    cleared: isize,
+    clear_total: isize,
     status: GameStatus,
 }
 
@@ -152,7 +150,7 @@ impl GameInfo {
         match self.status {
             GameStatus::Started => {
                 view! { cx,
-                    {format!("{} points", self.score)}
+                    {format!("{} cleared out of {}", self.cleared, self.clear_total)}
                     <br />
                     {time}
                     <br />
@@ -164,9 +162,9 @@ impl GameInfo {
                 view! { cx,
                     "Game over!"
                     <br />
-                    "Score - "{format!("{} points", self.score)}
-                    <br />
                     "Time - " {time}
+                    <br />
+                    ""
                     <br />
                 }
             }
@@ -174,9 +172,9 @@ impl GameInfo {
                 view! { cx,
                     "You won!"
                     <br />
-                    "Score - " {format!("{} points", self.score)}
-                    <br />
                     "Time - " {time}
+                    <br />
+                    ""
                     <br />
                 }
             }
@@ -234,10 +232,6 @@ impl CellState {
         matches!(self.interaction, CellInteraction::Untouched)
     }
 
-    fn is_dug(&self) -> bool {
-        matches!(self.interaction, CellInteraction::Dug)
-    }
-
     fn is_flagged(&self) -> bool {
         matches!(self.interaction, CellInteraction::Flagged)
     }
@@ -247,6 +241,7 @@ pub struct GameState {
     rows: isize,
     columns: isize,
     mines: isize,
+    cleared: isize,
     cell_states: Vec<CellState>,
     status: GameStatus,
     info: ReadSignal<GameInfo>,
@@ -269,9 +264,16 @@ impl GameState {
             Size::Medium => Self::MEDIUM_SIZE,
             Size::Large => Self::LARGE_SIZE,
         };
-        let total = (rows * columns) as usize;
+        let total = rows * columns;
+        let mines = (total as f64
+            * match params.difficulty {
+                Difficulty::Easy => Self::EASY_PROB,
+                Difficulty::Medium => Self::MEDIUM_PROB,
+                Difficulty::Hard => Self::HARD_PROB,
+            }) as isize;
 
         let (info, set_info) = create_signal(cx, GameInfo::default());
+        set_info.update(|info| info.clear_total = total - mines);
 
         let timer = create_action(cx, move |&()| async move {
             for second in 0..u32::MAX {
@@ -291,16 +293,12 @@ impl GameState {
         });
 
         Self {
-            rows: rows,
-            columns: columns,
-            cell_states: vec![CellState::default(); total],
-            mines: (total as f64
-                * match params.difficulty {
-                    Difficulty::Easy => Self::EASY_PROB,
-                    Difficulty::Medium => Self::MEDIUM_PROB,
-                    Difficulty::Hard => Self::HARD_PROB,
-                }) as isize,
-            status: GameStatus::Idle,
+            rows,
+            columns,
+            cell_states: vec![Default::default(); total as usize],
+            mines,
+            cleared: 0,
+            status: Default::default(),
             info,
             set_info,
             timer,
@@ -332,7 +330,7 @@ impl GameState {
                     continue;
                 }
 
-                let cell_state = self.cell_states.get_mut(index).unwrap();
+                let cell_state = self.cell_states.get_mut(index).expect("within bounds");
 
                 if !cell_state.is_mine() {
                     break cell_state;
@@ -344,7 +342,7 @@ impl GameState {
 
         for row in 0..self.rows {
             for column in 0..self.columns {
-                if self.get(row, column).unwrap().is_clear() {
+                if self.get(row, column).expect("within bounds").is_clear() {
                     let mines = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
@@ -353,7 +351,8 @@ impl GameState {
                         })
                         .count();
 
-                    self.get_mut(row, column).unwrap().kind = CellKind::Clear(mines as u32);
+                    self.get_mut(row, column).expect("within bounds").kind =
+                        CellKind::Clear(mines as u32);
                 }
             }
         }
@@ -388,41 +387,35 @@ impl GameState {
     }
 
     fn update_score(&mut self) {
-        let mut dug_count = 0;
-        let mut failed = false;
+        if matches!(self.status, GameStatus::Started)
+            && self.cleared == (self.rows * self.columns - self.mines)
+        {
+            self.status = GameStatus::Victory;
 
-        for cell_state in &self.cell_states {
-            if cell_state.is_dug() {
-                if cell_state.is_mine() {
-                    failed = true;
-                } else {
-                    dug_count += 1;
+            for cell_state in &mut self.cell_states {
+                if cell_state.is_untouched() {
+                    cell_state.signal.expect("signal registered")((
+                        CellInteraction::Flagged,
+                        CellKind::Mine,
+                    ));
                 }
             }
         }
 
-        if failed {
-            self.status = GameStatus::GameOver;
-        } else if dug_count as isize == self.rows * self.columns - self.mines {
-            self.status = GameStatus::Victory;
-        }
-
         self.set_info.update(|info| {
-            info.score = dug_count;
+            info.cleared = self.cleared;
             info.status = self.status;
         });
     }
 
     pub fn dig(&mut self, row: isize, column: isize) {
         match self.status {
-            GameStatus::Idle => {
-                self.start(row, column);
-            }
-
             GameStatus::GameOver | GameStatus::Victory => {
                 return;
             }
-
+            GameStatus::Idle => {
+                self.start(row, column);
+            }
             _ => {}
         }
 
@@ -439,19 +432,29 @@ impl GameState {
             CellInteraction::Untouched => {
                 cell_state.interaction = CellInteraction::Dug;
 
-                cell_state.signal.unwrap()((cell_state.interaction, cell_state.kind));
+                cell_state.signal.expect("signal registered")((
+                    cell_state.interaction,
+                    cell_state.kind,
+                ));
 
-                // after updating this cell, chain update any adjacent cells if this cell was 0
-                if matches!(cell_state.kind, CellKind::Clear(0)) {
-                    for (row_offset, column_offset) in ADJACENTS {
-                        self.dig_inner(row + row_offset, column + column_offset);
+                match cell_state.kind {
+                    CellKind::Mine => {
+                        self.status = GameStatus::GameOver;
+                        return;
                     }
+                    CellKind::Clear(0) => {
+                        // after updating this cell, chain update any adjacent cells if this cell was 0
+                        for (row_offset, column_offset) in ADJACENTS {
+                            self.dig_inner(row + row_offset, column + column_offset);
+                        }
+                    }
+                    _ => {}
                 }
             }
 
             CellInteraction::Dug => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
-                if let CellKind::Clear(mines) = self.get(row, column).unwrap().kind {
+                if let CellKind::Clear(mines) = self.get(row, column).expect("within bounds").kind {
                     let flags = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
@@ -472,9 +475,16 @@ impl GameState {
                         }
                     }
                 }
+
+                return;
             }
-            _ => {}
+
+            CellInteraction::Flagged => {
+                return;
+            }
         }
+
+        self.cleared += 1;
     }
 
     pub fn flag(&mut self, row: isize, column: isize) {
@@ -498,9 +508,25 @@ impl GameState {
             }
         }
 
-        cell_state.signal.expect("cell signal registered")((
-            cell_state.interaction,
-            cell_state.kind,
-        ));
+        cell_state.signal.expect("signal registered")((cell_state.interaction, cell_state.kind));
+    }
+
+    pub fn reset(&mut self) {
+        self.status = Default::default();
+        self.cleared = Default::default();
+
+        for cell_state in &mut self.cell_states {
+            cell_state.interaction = Default::default();
+            cell_state.kind = Default::default();
+
+            if let Some(cell_state_signal) = cell_state.signal {
+                cell_state_signal((Default::default(), Default::default()));
+            }
+        }
+
+        (self.set_info)(GameInfo {
+            clear_total: self.rows * self.columns - self.mines,
+            ..Default::default()
+        });
     }
 }

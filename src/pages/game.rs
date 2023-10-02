@@ -44,7 +44,7 @@ pub fn Game(cx: Scope) -> impl IntoView {
                             href=""
                             on:click=move |ev| {
                                 ev.prevent_default();
-                                location().reload().expect("reloaded");
+                                game_state_write.update(|game_state| game_state.reset());
                             }
                         >
                             "New Game"
