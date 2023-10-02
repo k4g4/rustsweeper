@@ -137,7 +137,7 @@ pub struct GameInfo {
 }
 
 impl GameInfo {
-    pub fn to_view(&self, cx: Scope) -> impl IntoView {
+    pub fn to_view(&self) -> impl IntoView {
         let time = {
             let duration = Duration::seconds(self.elapsed_seconds as i64);
             format!(
@@ -149,7 +149,7 @@ impl GameInfo {
 
         match self.status {
             GameStatus::Started => {
-                view! { cx,
+                view! {
                     {format!("{} cleared out of {}", self.cleared, self.clear_total)}
                     <br />
                     {time}
@@ -159,7 +159,7 @@ impl GameInfo {
                 }
             }
             GameStatus::GameOver => {
-                view! { cx,
+                view! {
                     "Game over!"
                     <br />
                     "Time - " {time}
@@ -169,7 +169,7 @@ impl GameInfo {
                 }
             }
             GameStatus::Victory => {
-                view! { cx,
+                view! {
                     "You won!"
                     <br />
                     "Time - " {time}
@@ -179,7 +179,7 @@ impl GameInfo {
                 }
             }
             GameStatus::Idle => {
-                view! { cx,
+                view! {
                     ""
                     <br />
                     ""
@@ -196,7 +196,7 @@ impl GameInfo {
 pub enum CellInteraction {
     #[default]
     Untouched,
-    Dug,
+    Cleared,
     Flagged,
 }
 
@@ -258,7 +258,7 @@ impl GameState {
     const MEDIUM_SIZE: (isize, isize) = (10, 15);
     const LARGE_SIZE: (isize, isize) = (12, 18);
 
-    pub fn new(cx: Scope, params: GameParams) -> Self {
+    pub fn new(params: GameParams) -> Self {
         let (rows, columns) = match params.size {
             Size::Small => Self::SMALL_SIZE,
             Size::Medium => Self::MEDIUM_SIZE,
@@ -272,10 +272,10 @@ impl GameState {
                 Difficulty::Hard => Self::HARD_PROB,
             }) as isize;
 
-        let (info, set_info) = create_signal(cx, GameInfo::default());
+        let (info, set_info) = create_signal(GameInfo::default());
         set_info.update(|info| info.clear_total = total - mines);
 
-        let timer = create_action(cx, move |&()| async move {
+        let timer = create_action(move |&()| async move {
             for second in 0..u32::MAX {
                 let mut stop = false;
                 set_info.update(|info| {
@@ -430,7 +430,7 @@ impl GameState {
 
         match cell_state.interaction {
             CellInteraction::Untouched => {
-                cell_state.interaction = CellInteraction::Dug;
+                cell_state.interaction = CellInteraction::Cleared;
 
                 cell_state.signal.expect("signal registered")((
                     cell_state.interaction,
@@ -452,7 +452,7 @@ impl GameState {
                 }
             }
 
-            CellInteraction::Dug => {
+            CellInteraction::Cleared => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
                 if let CellKind::Clear(mines) = self.get(row, column).expect("within bounds").kind {
                     let flags = ADJACENTS
@@ -500,7 +500,7 @@ impl GameState {
             CellInteraction::Untouched => {
                 cell_state.interaction = CellInteraction::Flagged;
             }
-            CellInteraction::Dug => {
+            CellInteraction::Cleared => {
                 return;
             }
             CellInteraction::Flagged => {

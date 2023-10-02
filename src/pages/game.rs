@@ -22,21 +22,21 @@ const FLAG_SVG: &str = include_str!("../../svgs/flag.svg");
 
 /// Renders the game.
 #[component]
-pub fn Game(cx: Scope) -> impl IntoView {
-    let params = use_query::<GameParams>(cx);
+pub fn Game() -> impl IntoView {
+    let params = use_query::<GameParams>();
 
     window_event_listener(ev::contextmenu, |event| event.prevent_default());
 
     params.with_untracked(|params| match params {
         Ok(params) => {
-            let game_state = GameState::new(cx, *params);
+            let game_state = GameState::new(*params);
             let (rows, columns) = game_state.dimensions();
 
-            let (game_state_read, game_state_write) = create_signal(cx, game_state);
-            provide_context(cx, game_state_read);
-            provide_context(cx, game_state_write);
+            let (game_state_read, game_state_write) = create_signal(game_state);
+            provide_context(game_state_read);
+            provide_context(game_state_write);
 
-            view! { cx,
+            view! {
                 <h1>"Rustsweeper"</h1>
                 <div class="buttons">
                     <div class="button-item">
@@ -61,32 +61,32 @@ pub fn Game(cx: Scope) -> impl IntoView {
 
                 <Board rows columns size=params.size />
             }
-            .into_view(cx)
+            .into_view()
         }
 
         Err(error) => {
             let mut outside_errors = Errors::default();
             outside_errors.insert_with_default_key(AppError::ParamsError(error.clone()));
 
-            view! { cx,
+            view! {
                 <Error outside_errors />
             }
-            .into_view(cx)
+            .into_view()
         }
     })
 }
 
 /// Displays the timer and current score.
 #[component]
-fn Info(cx: Scope) -> impl IntoView {
-    let info = use_context::<ReadSignal<GameState>>(cx)
+fn Info() -> impl IntoView {
+    let info = use_context::<ReadSignal<GameState>>()
         .expect("game state exists")
         .with(|game_state| game_state.info_signal());
 
-    view! { cx,
+    view! {
         <h2 class="info">
             {
-                move || info.with(|info| info.to_view(cx))
+                move || info.with(|info| info.to_view())
             }
         </h2>
     }
@@ -94,32 +94,32 @@ fn Info(cx: Scope) -> impl IntoView {
 
 /// The game board.
 #[component]
-fn Board(cx: Scope, rows: isize, columns: isize, size: Size) -> impl IntoView {
-    view! { cx,
+fn Board(rows: isize, columns: isize, size: Size) -> impl IntoView {
+    view! {
         <div class={ format!("game-board {size}") }>
-            { (0..rows).map(|row| view!{ cx, <Row row columns /> }).collect_view(cx) }
+            { (0..rows).map(|row| view!{ <Row row columns /> }).collect_view() }
         </div>
     }
 }
 
 /// A game board row.
 #[component]
-fn Row(cx: Scope, row: isize, columns: isize) -> impl IntoView {
+fn Row(row: isize, columns: isize) -> impl IntoView {
     (0..columns)
-        .map(|column| view! { cx, <Cell row column /> })
-        .collect_view(cx)
+        .map(|column| view! { <Cell row column /> })
+        .collect_view()
 }
 
 /// A cell on the board.
 #[component]
-fn Cell(cx: Scope, row: isize, column: isize) -> impl IntoView {
+fn Cell(row: isize, column: isize) -> impl IntoView {
     let (cell_state, set_cell_state) =
-        create_signal(cx, (CellInteraction::Untouched, CellKind::Clear(0)));
-    let game_state_write = use_context::<WriteSignal<GameState>>(cx).expect("game state exists");
+        create_signal((CellInteraction::Untouched, CellKind::Clear(0)));
+    let game_state_write = use_context::<WriteSignal<GameState>>().expect("game state exists");
 
     game_state_write.update(|game_state| game_state.register_cell(row, column, set_cell_state));
 
-    view! { cx,
+    view! {
         <div
             on:mouseup=move |event| {
                 match event.button() {
@@ -133,10 +133,16 @@ fn Cell(cx: Scope, row: isize, column: isize) -> impl IntoView {
                 }
             }
 
-            class="cell"
+            class=move || {
+                match cell_state() {
+                    (CellInteraction::Flagged, _) => "cell flagged".into(),
+                    (_, CellKind::Mine) => "cell mine".into(),
+                    (_, CellKind::Clear(num)) => format!("cell num-{num}"),
+                }
+            }
 
-            class:dug=move || {
-                matches!(cell_state().0, CellInteraction::Dug)
+            class:cleared=move || {
+                matches!(cell_state().0, CellInteraction::Cleared)
             }
 
             style:grid-row-start={row+1}
@@ -149,7 +155,7 @@ fn Cell(cx: Scope, row: isize, column: isize) -> impl IntoView {
                     CellInteraction::Untouched => {
                         ""
                     }
-                    CellInteraction::Dug => {
+                    CellInteraction::Cleared => {
                         match cell_kind {
                             CellKind::Mine => {
                                 BOMB_SVG

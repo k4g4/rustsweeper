@@ -11,12 +11,11 @@ use leptos_axum::ResponseOptions;
 // Feel free to do more complicated things here than just displaying the error.
 #[component]
 pub fn Error(
-    cx: Scope,
     #[prop(optional)] outside_errors: Option<Errors>,
     #[prop(optional)] errors: Option<RwSignal<Errors>>,
 ) -> impl IntoView {
     let errors = match outside_errors {
-        Some(e) => create_rw_signal(cx, e),
+        Some(e) => RwSignal::new(e),
         None => match errors {
             Some(e) => e,
             None => panic!("No Errors found and we expected errors!"),
@@ -41,7 +40,7 @@ pub fn Error(
         }
     }}
 
-    view! {cx,
+    view! {
         <h1>{if errors.len() > 1 {"Errors"} else {"Error"}}</h1>
         <For
             // a function that returns the items we're iterating over; a signal is fine
@@ -49,7 +48,7 @@ pub fn Error(
             // a unique key for each item as a reference
             key=|(index, _error)| *index
             // renders each item to a view
-            view= move |cx, error| {
+            children= move |error| {
                 let error_string = error.1.to_string();
                 let error_code= error.1.status_code();
                 view! {
