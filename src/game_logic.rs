@@ -4,7 +4,7 @@ use chrono::Duration;
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use thiserror::Error;
 
 const ADJACENTS: [(isize, isize); 8] = [
@@ -246,6 +246,8 @@ pub struct GameState {
     status: GameStatus,
     info: ReadSignal<GameInfo>,
     set_info: WriteSignal<GameInfo>,
+    new_game_enabled: ReadSignal<bool>,
+    set_new_game_enabled: WriteSignal<bool>,
     timer: Action<(), ()>,
 }
 
@@ -292,6 +294,8 @@ impl GameState {
             }
         });
 
+        let (new_game_enabled, set_new_game_enabled) = create_signal(true);
+
         Self {
             rows,
             columns,
@@ -301,6 +305,8 @@ impl GameState {
             status: Default::default(),
             info,
             set_info,
+            new_game_enabled,
+            set_new_game_enabled,
             timer,
         }
     }
@@ -311,6 +317,10 @@ impl GameState {
 
     pub fn info_signal(&self) -> ReadSignal<GameInfo> {
         self.info
+    }
+
+    pub fn new_game_enabled_signal(&self) -> ReadSignal<bool> {
+        self.new_game_enabled
     }
 
     fn start(&mut self, row: isize, column: isize) {
@@ -387,19 +397,48 @@ impl GameState {
     }
 
     fn update_score(&mut self) {
-        if matches!(self.status, GameStatus::Started)
-            && self.cleared == (self.rows * self.columns - self.mines)
-        {
-            self.status = GameStatus::Victory;
+        match self.status {
+            GameStatus::Started if self.cleared == self.rows * self.columns - self.mines => {
+                self.status = GameStatus::Victory;
 
-            for cell_state in &mut self.cell_states {
-                if cell_state.is_untouched() {
-                    cell_state.signal.expect("signal registered")((
-                        CellInteraction::Flagged,
-                        CellKind::Mine,
-                    ));
+                for cell_state in &mut self.cell_states {
+                    if cell_state.is_untouched() {
+                        cell_state.signal.expect("signal registered")((
+                            CellInteraction::Flagged,
+                            CellKind::Mine,
+                        ));
+                    }
                 }
             }
+
+            GameStatus::GameOver => {
+                (self.set_new_game_enabled)(false);
+
+                let mut mine_signals = self
+                    .cell_states
+                    .iter()
+                    .filter(|cell_state| cell_state.is_untouched() && cell_state.is_mine())
+                    .map(|cell_state| cell_state.signal.expect("signal registered"))
+                    .collect::<Vec<_>>();
+                mine_signals.shuffle(&mut rand::thread_rng());
+
+                spawn_local({
+                    let set_new_game_enabled = self.set_new_game_enabled;
+                    
+                    async move {
+                        TimeoutFuture::new(400).await;
+
+                        for set_cell_state in mine_signals {
+                            set_cell_state((CellInteraction::Cleared, CellKind::Mine));
+                            TimeoutFuture::new(20).await;
+                        }
+
+                        set_new_game_enabled(true);
+                    }
+                });
+            }
+
+            _ => {}
         }
 
         self.set_info.update(|info| {

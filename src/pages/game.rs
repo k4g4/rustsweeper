@@ -32,6 +32,7 @@ pub fn Game() -> impl IntoView {
         Ok(params) => {
             let game_state = GameState::new(*params);
             let (rows, columns) = game_state.dimensions();
+            let new_game_enabled = game_state.new_game_enabled_signal();
 
             let (game_state_read, game_state_write) = create_signal(game_state);
             provide_context(game_state_read);
@@ -43,10 +44,16 @@ pub fn Game() -> impl IntoView {
                     <div class="button-item">
                         <A
                             href=""
+
                             on:click=move |ev| {
                                 ev.prevent_default();
-                                game_state_write.update(|game_state| game_state.reset());
+
+                                if new_game_enabled() {
+                                    game_state_write.update(|game_state| game_state.reset());
+                                }
                             }
+
+                            class=move || { if new_game_enabled() { "" } else { "disabled" } }
                         >
                             "New Game"
                         </A>

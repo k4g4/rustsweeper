@@ -106,6 +106,10 @@ body.dark .settings {
 		margin-right: 10px;
 		border-radius: 4px;
 		font-size: 20px;
+
+		.disabled {
+			cursor: default;
+		}
 		
 		input {
 			border: none;

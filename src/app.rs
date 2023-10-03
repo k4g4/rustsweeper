@@ -11,13 +11,10 @@ const MOON_SVG: &str = include_str!("../svgs/moon.svg");
 
 #[cfg(feature = "ssr")]
 async fn get_theme() {
-    use axum_extra::extract::cookie::{CookieJar, Cookie};
+    use axum_extra::extract::cookie::{Cookie, CookieJar};
     use leptos_axum::extract;
 
-    extract(|jar: CookieJar| async move {
-        jar
-    })
-    .await;
+    extract(|jar: CookieJar| async move { jar }).await;
 }
 
 #[component]
