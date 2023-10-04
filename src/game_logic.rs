@@ -352,16 +352,16 @@ impl GameState {
 
         for row in 0..self.rows {
             for column in 0..self.columns {
-                if self.get(row, column).expect("within bounds").is_clear() {
+                if self.get_cell_state(row, column).expect("within bounds").is_clear() {
                     let mines = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
-                            self.get(row + row_offset, column + column_offset)
+                            self.get_cell_state(row + row_offset, column + column_offset)
                                 .map_or(false, |cell_state| cell_state.is_mine())
                         })
                         .count();
 
-                    self.get_mut(row, column).expect("within bounds").kind =
+                    self.get_cell_state_mut(row, column).expect("within bounds").kind =
                         CellKind::Clear(mines as u32);
                 }
             }
@@ -375,12 +375,12 @@ impl GameState {
             .then_some((row * self.columns + column) as usize)
     }
 
-    fn get(&self, row: isize, column: isize) -> Option<&CellState> {
+    fn get_cell_state(&self, row: isize, column: isize) -> Option<&CellState> {
         self.index(row, column)
             .map(|index| &self.cell_states[index])
     }
 
-    fn get_mut(&mut self, row: isize, column: isize) -> Option<&mut CellState> {
+    fn get_cell_state_mut(&mut self, row: isize, column: isize) -> Option<&mut CellState> {
         self.index(row, column)
             .map(|index| &mut self.cell_states[index])
     }
@@ -391,7 +391,7 @@ impl GameState {
         column: isize,
         set_cell_state: WriteSignal<(CellInteraction, CellKind)>,
     ) {
-        self.get_mut(row, column)
+        self.get_cell_state_mut(row, column)
             .expect("row and column within bounds")
             .signal = Some(set_cell_state);
     }
@@ -424,7 +424,7 @@ impl GameState {
 
                 spawn_local({
                     let set_new_game_enabled = self.set_new_game_enabled;
-                    
+
                     async move {
                         TimeoutFuture::new(400).await;
 
@@ -463,7 +463,7 @@ impl GameState {
     }
 
     fn dig_inner(&mut self, row: isize, column: isize) {
-        let Some(cell_state) = self.get_mut(row, column) else {
+        let Some(cell_state) = self.get_cell_state_mut(row, column) else {
             return;
         };
 
@@ -493,11 +493,11 @@ impl GameState {
 
             CellInteraction::Cleared => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
-                if let CellKind::Clear(mines) = self.get(row, column).expect("within bounds").kind {
+                if let CellKind::Clear(mines) = self.get_cell_state(row, column).expect("within bounds").kind {
                     let flags = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
-                            self.get(row + row_offset, column + column_offset)
+                            self.get_cell_state(row + row_offset, column + column_offset)
                                 .map_or(false, |cell_state| cell_state.is_flagged())
                         })
                         .count();
@@ -505,7 +505,7 @@ impl GameState {
                     if mines == flags as u32 {
                         for (row_offset, column_offset) in ADJACENTS {
                             if let Some(cell_state) =
-                                self.get(row + row_offset, column + column_offset)
+                                self.get_cell_state(row + row_offset, column + column_offset)
                             {
                                 if cell_state.is_untouched() {
                                     self.dig_inner(row + row_offset, column + column_offset);
@@ -531,7 +531,7 @@ impl GameState {
             return;
         }
 
-        let Some(cell_state) = self.get_mut(row, column) else {
+        let Some(cell_state) = self.get_cell_state_mut(row, column) else {
             return;
         };
 
