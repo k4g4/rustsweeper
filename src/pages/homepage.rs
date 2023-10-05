@@ -21,24 +21,28 @@ pub fn HomePage() -> impl IntoView {
             on_form_data=Rc::new(move |form_data| {
                 if let Some(difficulty) = form_data.get("difficulty").as_string() {
                     if let Ok(difficulty) = difficulty.parse() {
-                        if settings().difficulty != difficulty {
-                            set_settings.update(|settings| {
-                                settings.difficulty = difficulty;
-                            });
+                        settings.with(|settings| {
+                            if settings.difficulty != difficulty {
+                                set_settings.update(|settings| {
+                                    settings.difficulty = difficulty;
+                                });
 
-                            Settings::set("difficulty", &difficulty);
-                        }
+                                Settings::set("difficulty", &difficulty);
+                            }
+                        });
                     }
                 }
                 if let Some(size) = form_data.get("size").as_string() {
                     if let Ok(size) = size.parse() {
-                        if settings().size != size {
-                            set_settings.update(|settings| {
-                                settings.size = size;
-                            });
+                        settings.with(|settings| {
+                            if settings.size != size {
+                                set_settings.update(|settings| {
+                                    settings.size = size;
+                                });
 
-                            Settings::set("size", &size);
-                        }
+                                Settings::set("size", &size);
+                            }
+                        });
                     }
                 }
             })
@@ -62,7 +66,8 @@ pub fn HomePage() -> impl IntoView {
                                         <option
                                             value=difficulty.to_string()
                                             selected=move || {
-                                                settings().difficulty == *difficulty
+                                                settings.with(|settings|
+                                                    settings.difficulty == *difficulty)
                                             }
                                         >
                                         {
@@ -93,7 +98,8 @@ pub fn HomePage() -> impl IntoView {
                                         <option
                                             value=size.to_string()
                                             selected=move || {
-                                                settings().size == *size
+                                                settings.with(|settings|
+                                                    settings.size == *size)
                                             }
                                         >
                                         {

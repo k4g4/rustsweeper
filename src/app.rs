@@ -23,7 +23,7 @@ pub fn App() -> impl IntoView {
 
         <Title text="Rustsweeper"/>
 
-        <Body class=move || settings().theme.to_string() />
+        <Body class=move || settings.with(|settings| settings.theme.to_string()) />
 
         <Router fallback=|| {
             let mut outside_errors = Errors::default();
@@ -38,7 +38,7 @@ pub fn App() -> impl IntoView {
                     class="theme-toggle"
 
                     on:click=move |_| {
-                        let new_theme = settings().theme.toggle();
+                        let new_theme = settings.with(|settings| settings.theme.toggle());
 
                         set_settings.update(|settings| {
                             settings.theme = new_theme;
@@ -48,14 +48,14 @@ pub fn App() -> impl IntoView {
                     }
 
                     inner_html=move || {
-                        match settings().theme {
+                        settings.with(|settings| match settings.theme {
                             Theme::Light => {
                                 MOON_SVG
                             }
                             Theme::Dark => {
                                 LIGHTBULB_SVG
                             }
-                        }
+                        })
                     }
                 />
                 <Routes>
