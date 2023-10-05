@@ -19,9 +19,10 @@ const ADJACENTS: [(isize, isize); 8] = [
 ];
 
 const EASY: &str = "easy";
-const MEDIUM: &str = "medium";
+const NORMAL: &str = "normal";
 const HARD: &str = "hard";
 const SMALL: &str = "small";
+const MEDIUM: &str = "medium";
 const LARGE: &str = "large";
 
 #[derive(Error, Debug)]
@@ -47,7 +48,7 @@ impl Display for GameParamsError {
 pub enum Difficulty {
     #[default]
     Easy,
-    Medium,
+    Normal,
     Hard,
 }
 
@@ -57,7 +58,7 @@ impl FromStr for Difficulty {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             EASY => Self::Easy,
-            MEDIUM => Self::Medium,
+            NORMAL => Self::Normal,
             HARD => Self::Hard,
             _ => return Err(GameParamsError::InvalidDifficulty),
         })
@@ -71,7 +72,7 @@ impl Display for Difficulty {
             "{}",
             match self {
                 Self::Easy => EASY,
-                Self::Medium => MEDIUM,
+                Self::Normal => NORMAL,
                 Self::Hard => HARD,
             }
         )
@@ -253,7 +254,7 @@ pub struct GameState {
 
 impl GameState {
     const EASY_PROB: f64 = 0.15;
-    const MEDIUM_PROB: f64 = 0.25;
+    const NORMAL_PROB: f64 = 0.25;
     const HARD_PROB: f64 = 0.35;
 
     const SMALL_SIZE: (isize, isize) = (8, 12);
@@ -270,7 +271,7 @@ impl GameState {
         let mines = (total as f64
             * match params.difficulty {
                 Difficulty::Easy => Self::EASY_PROB,
-                Difficulty::Medium => Self::MEDIUM_PROB,
+                Difficulty::Normal => Self::NORMAL_PROB,
                 Difficulty::Hard => Self::HARD_PROB,
             }) as isize;
 

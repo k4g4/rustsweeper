@@ -15,18 +15,15 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     let settings = Settings::fetch();
-
-    let (theme, set_theme) = create_signal(Theme::default());
-    set_theme(settings.theme);
-
-    provide_context(settings);
+    let (settings, set_settings) = create_signal(settings);
+    provide_context((settings, set_settings));
 
     view! {
         <Stylesheet id="leptos" href="/pkg/rustsweeper.css"/>
 
         <Title text="Rustsweeper"/>
 
-        <Body class=move || theme().to_string() />
+        <Body class=move || settings().theme.to_string() />
 
         <Router fallback=|| {
             let mut outside_errors = Errors::default();
@@ -41,22 +38,17 @@ pub fn App() -> impl IntoView {
                     class="theme-toggle"
 
                     on:click=move |_| {
-                        let new_theme = theme().toggle();
-                        set_theme(new_theme);
+                        let new_theme = settings().theme.toggle();
 
-                        cfg_if::cfg_if! { if #[cfg(target_arch = "wasm32")] {
+                        set_settings.update(|settings| {
+                            settings.theme = new_theme;
+                        });
 
-                        wasm_cookies::set(
-                            "theme",
-                            &new_theme.to_string(),
-                            &wasm_cookies::CookieOptions::default()
-                                .expires_after(chrono::Duration::weeks(999).to_std().expect("converts fine")));
-
-                        }}
+                        Settings::set("theme", &new_theme);
                     }
 
                     inner_html=move || {
-                        match theme() {
+                        match settings().theme {
                             Theme::Light => {
                                 MOON_SVG
                             }

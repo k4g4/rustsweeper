@@ -45,7 +45,7 @@ impl FromStr for Theme {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Settings {
     pub theme: Theme,
     pub difficulty: Difficulty,
@@ -54,6 +54,7 @@ pub struct Settings {
 
 impl Settings {
     cfg_if! { if #[cfg(feature = "ssr")] {
+
     pub fn fetch() -> Self {
         if let Some(leptos_axum::RequestParts { headers, ..}) = leptos::use_context() {
             let jar = axum_extra::extract::CookieJar::from_headers(&headers);
@@ -71,10 +72,13 @@ impl Settings {
         }
     }
 
+    pub fn set<T: Display>(_name: &str, _value: &T) {}
+
     } else if #[cfg(target_arch = "wasm32")] {
+
     pub fn fetch() -> Self {
         let theme = if let Some(Ok(theme)) = wasm_cookies::get("theme") {
-            theme.parse().expect("infallible")
+            theme.parse().unwrap_or_default()
         } else if let Ok(Some(mql)) = leptos::window().match_media("(prefers-color-scheme: dark)") {
             if mql.matches() {
                 Theme::Dark
@@ -104,10 +108,22 @@ impl Settings {
         }
     }
 
-    } else { // stub for rust-analyzer, shouldn't actually get called
+    pub fn set<T: Display>(name: &str, value: &T) {
+        wasm_cookies::set(
+            name,
+            &value.to_string(),
+            &wasm_cookies::CookieOptions::default()
+                .expires_after(chrono::Duration::weeks(999).to_std().expect("convert to std duration")));
+    }
+
+    } else {
+    // stubs for rust-analyzer, shouldn't actually get called
+
     pub fn fetch() -> Self {
         Self::default()
     }
+    
+    pub fn set<T: Display>(_name: &str, _value: &T) {}
 
     }}
 }
