@@ -280,16 +280,21 @@ impl GameState {
         let timer = create_action(move |&()| async move {
             for second in 0..u32::MAX {
                 let mut stop = false;
-                set_info.update(|info| {
-                    if matches!(info.status, GameStatus::Started) {
-                        info.elapsed_seconds = second;
-                    } else {
-                        stop = true;
-                    }
-                });
-                if stop {
+
+                let disposed = set_info
+                    .try_update(|info| {
+                        if matches!(info.status, GameStatus::Started) {
+                            info.elapsed_seconds = second;
+                        } else {
+                            stop = true;
+                        }
+                    })
+                    .is_none();
+
+                if stop || disposed {
                     break;
                 }
+
                 TimeoutFuture::new(1_000).await;
             }
         });
@@ -352,7 +357,11 @@ impl GameState {
 
         for row in 0..self.rows {
             for column in 0..self.columns {
-                if self.get_cell_state(row, column).expect("within bounds").is_clear() {
+                if self
+                    .get_cell_state(row, column)
+                    .expect("within bounds")
+                    .is_clear()
+                {
                     let mines = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {
@@ -361,8 +370,9 @@ impl GameState {
                         })
                         .count();
 
-                    self.get_cell_state_mut(row, column).expect("within bounds").kind =
-                        CellKind::Clear(mines as u32);
+                    self.get_cell_state_mut(row, column)
+                        .expect("within bounds")
+                        .kind = CellKind::Clear(mines as u32);
                 }
             }
         }
@@ -493,7 +503,11 @@ impl GameState {
 
             CellInteraction::Cleared => {
                 // when digging on a numbered space, check if enough flags adjacent and dig non-flags
-                if let CellKind::Clear(mines) = self.get_cell_state(row, column).expect("within bounds").kind {
+                if let CellKind::Clear(mines) = self
+                    .get_cell_state(row, column)
+                    .expect("within bounds")
+                    .kind
+                {
                     let flags = ADJACENTS
                         .iter()
                         .filter(|(row_offset, column_offset)| {

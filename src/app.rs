@@ -4,39 +4,29 @@ use leptos_meta::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
+use crate::app_settings::{Settings, Theme};
 use crate::pages::{Error, Game, HomePage};
 
 const LIGHTBULB_SVG: &str = include_str!("../svgs/lightbulb.svg");
 const MOON_SVG: &str = include_str!("../svgs/moon.svg");
 
-#[cfg(feature = "ssr")]
-async fn get_theme() {
-    use axum_extra::extract::cookie::{Cookie, CookieJar};
-    use leptos_axum::extract;
-
-    extract(|jar: CookieJar| async move { jar }).await;
-}
-
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let (theme, set_theme) = create_signal("light".to_string());
+    let settings = Settings::fetch();
 
-    create_effect(move |_| {
-        if let Ok(Some(mql)) = window().match_media("(prefers-color-scheme: dark)") {
-            if mql.matches() {
-                set_theme("dark".to_string());
-            }
-        }
-    });
+    let (theme, set_theme) = create_signal(Theme::default());
+    set_theme(settings.theme);
+
+    provide_context(settings);
 
     view! {
         <Stylesheet id="leptos" href="/pkg/rustsweeper.css"/>
 
         <Title text="Rustsweeper"/>
 
-        <Body class=theme />
+        <Body class=move || theme().to_string() />
 
         <Router fallback=|| {
             let mut outside_errors = Errors::default();
@@ -51,18 +41,28 @@ pub fn App() -> impl IntoView {
                     class="theme-toggle"
 
                     on:click=move |_| {
-                        set_theme((if theme() == "light" { "dark" } else { "light" }).to_string())
+                        let new_theme = theme().toggle();
+                        set_theme(new_theme);
+
+                        cfg_if::cfg_if! { if #[cfg(target_arch = "wasm32")] {
+
+                        wasm_cookies::set(
+                            "theme",
+                            &new_theme.to_string(),
+                            &wasm_cookies::CookieOptions::default()
+                                .expires_after(chrono::Duration::weeks(999).to_std().expect("converts fine")));
+
+                        }}
                     }
 
                     inner_html=move || {
-                        match theme().as_str() {
-                            "light" => {
+                        match theme() {
+                            Theme::Light => {
                                 MOON_SVG
                             }
-                            "dark" => {
+                            Theme::Dark => {
                                 LIGHTBULB_SVG
                             }
-                            _ => { "" }
                         }
                     }
                 />

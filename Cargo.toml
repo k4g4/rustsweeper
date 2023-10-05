@@ -28,9 +28,12 @@ rand = "0.8.5"
 leptos_dom = "0.4.10"
 futures = "0.3.28"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
+gloo-storage = "0.3.0"
 chrono = "0.4.31"
-web-sys = { version = "0.3.64", features = ["MediaQueryList", "Window"] }
+web-sys = { version = "0.3.64", features = ["MediaQueryList", "Window", "HtmlDocument"] }
 axum-extra = { version = "0.8.0", features = ["cookie"] }
+serde = { version = "1.0.188", features = ["serde_derive"] }
+wasm-cookies = "0.2.1"
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]

@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 pub mod app;
 pub mod app_error;
-pub mod fileserv;
+pub mod app_settings;
 pub mod game_logic;
 pub mod pages;
 
