@@ -1,7 +1,7 @@
-use leptos::logging::*;
 use leptos::*;
 use leptos_router::*;
 
+use crate::app::TAILWIND_BUTTON;
 use crate::app_error::AppError;
 use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState, Size};
 use crate::pages::Error;
@@ -39,9 +39,8 @@ pub fn Game() -> impl IntoView {
             provide_context(game_state_write);
 
             view! {
-                <h1>"Rustsweeper"</h1>
                 <div class="buttons">
-                    <div class="button-item">
+                    <div class=TAILWIND_BUTTON>
                         <A
                             href=""
 
@@ -58,7 +57,7 @@ pub fn Game() -> impl IntoView {
                             "New Game"
                         </A>
                     </div>
-                    <div class="button-item">
+                    <div class=TAILWIND_BUTTON>
                         <A href="/">
                             "Return"
                         </A>

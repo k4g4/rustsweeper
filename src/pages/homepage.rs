@@ -3,6 +3,7 @@ use std::rc::Rc;
 use leptos::*;
 use leptos_router::*;
 
+use crate::app::TAILWIND_BUTTON;
 use crate::app_settings::Settings;
 use crate::game_logic::{Difficulty, Size};
 
@@ -12,7 +13,6 @@ pub fn HomePage() -> impl IntoView {
     let (settings, set_settings) = expect_context::<(ReadSignal<Settings>, WriteSignal<Settings>)>();
 
     view! {
-        <h1>"Rustsweeper"</h1>
         <Form 
             method="GET"
             
@@ -47,9 +47,9 @@ pub fn HomePage() -> impl IntoView {
                 }
             })
         >
-            <div class="settings">
-                <h4>"Settings"</h4>
-                <table>
+            <div class="my-5 inline-block p-4 rounded text-xl bg-zinc-500 dark:bg-gray-700">
+                <div class="mx-auto mb-2 text-2xl">"Settings"</div>
+                <table class="text-left">
                     <tr class="setting difficulty">
                         <td>
                             <label for="difficulty">"Difficulty:"</label>
@@ -116,8 +116,8 @@ pub fn HomePage() -> impl IntoView {
                     </tr>
                 </table>
             </div>
-            <div class="buttons">
-                <div class="button-item">
+            <div>
+                <div class=TAILWIND_BUTTON>
                     <input type="submit" value="New Game" />
                 </div>
             </div>

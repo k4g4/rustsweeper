@@ -8,21 +8,6 @@ $black: rgb(20, 20, 20);
 	color-scheme: light dark;
 }
 
-body {
-	font-family: 'Trebuchet MS', Arial, sans-serif;
-	text-align: center;
-}
-
-body.light {
-	color: $black;
-	background-color: $tan;
-}
-
-body.dark {
-	color: $light-gray;
-	background-color: $black;
-}
-
 .theme-toggle {
 	position: fixed;
 	float: right;
