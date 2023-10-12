@@ -6,12 +6,6 @@ use crate::app_error::AppError;
 use crate::app_settings::{Settings, Theme};
 use crate::pages::{Error, Game, HomePage};
 
-pub const TAILWIND_BUTTON: &str = concat!(
-    "inline-block font-semibold mx-3 ",
-    "text-white cursor-pointer [&>*]:cursor-pointer ",
-    "rounded-lg p-2 bg-sky-600 ring-1 ring-sky-600/5 ",
-    "shadow-xl shadow-gray-400 hover:bg-sky-700 hover:ring-sky-700");
-
 const LIGHTBULB_SVG: &str = include_str!("../svgs/lightbulb.svg");
 const MOON_SVG: &str = include_str!("../svgs/moon.svg");
 
@@ -24,6 +18,7 @@ pub fn App() -> impl IntoView {
     provide_context((settings, set_settings));
 
     view! {
+        <Stylesheet id="leptos" href="/pkg/tailwind.css" />
         <Stylesheet id="leptos" href="/pkg/rustsweeper.css" />
 
         <Title text="Rustsweeper" />
@@ -44,7 +39,7 @@ pub fn App() -> impl IntoView {
             <main>
                 <div class="text-4xl my-5 mx-auto font-bold">"Rustsweeper"</div>
                 <button
-                    class="theme-toggle"
+                    class="theme-toggle shado"
 
                     on:click=move |_| {
                         let new_theme = settings.with(|settings| settings.theme.toggle());

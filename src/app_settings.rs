@@ -122,7 +122,7 @@ impl Settings {
     pub fn fetch() -> Self {
         Self::default()
     }
-    
+
     pub fn set<T: Display>(_name: &str, _value: &T) {}
 
     }}
