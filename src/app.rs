@@ -23,9 +23,8 @@ pub fn App() -> impl IntoView {
 
         <Title text="Rustsweeper" />
 
-        <Body class=move || {
-            settings.with(|Settings { theme, ..}|
-                format!("text-center bg-slate-100 text-black {theme}"))
+        <Html class=move || {
+            settings.with(|Settings { theme, ..}| theme.to_string())
         }/>
 
         <Router fallback=|| {
@@ -39,7 +38,7 @@ pub fn App() -> impl IntoView {
             <main>
                 <div class="text-4xl my-5 mx-auto font-bold">"Rustsweeper"</div>
                 <button
-                    class="theme-toggle shado"
+                    class="theme-toggle"
 
                     on:click=move |_| {
                         let new_theme = settings.with(|settings| settings.theme.toggle());

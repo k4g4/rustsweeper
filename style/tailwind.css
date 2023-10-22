@@ -2,9 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+    @apply bg-slate-100 dark:bg-gray-800 text-center text-gray-800 dark:text-slate-300
+}
+
+.game-board {
+    @apply mt-20 mx-auto grid bg-gray-400 dark:bg-gray-600 border-4 border-solid border-gray-950 rounded-lg
+}
+
+.game-board .cleared {
+    @apply bg-gray-200 dark:bg-slate-400
+}
+
+.game-board .cell {
+    @apply border-2 border-solid border-gray-950
+}
+
+.game-board.large {
+    height: 600px;
+    width: 900px;
+}
+
+.game-board.medium {
+    height: 500px;
+    width: 750px;
+}
+
+.game-board.small {
+    height: 400px;
+    width: 600px;
+}
+
+.cell svg {
+    width: 35px;
+    height: 35px;
+    transform: translate(5px, 5px);
+    @apply absolute
+}
+
+.cell:not(.cleared):hover {
+    cursor: pointer;
+}
+
+.info {
+    height: 20px;
+    @apply text-xl mt-8 mb-8 font-semibold text-gray-950 dark:text-slate-300
+}
+
 .btn {
-    @apply inline-block font-semibold mx-3 text-white cursor-pointer
-    [&>*]:cursor-pointer rounded-lg p-2 bg-sky-600
-    ring-1 ring-sky-600/5 shadow-lg shadow-gray-400
-    hover:bg-sky-700 hover:ring-sky-700
+    @apply mt-3 inline-block font-semibold mx-3 text-white cursor-pointer [&>*]:cursor-pointer rounded-lg p-2 bg-sky-600 ring-1 ring-sky-600/5 shadow-lg shadow-gray-400 dark:shadow-gray-900 hover:bg-sky-700 hover:ring-sky-700
+}
+
+.disabled {
+    @apply cursor-default
+}
+
+.settings {
+    @apply mt-5 mb-5 inline-block p-5 rounded-xl text-xl text-black dark:text-slate-100 bg-sky-300 dark:bg-zinc-900 shadow-lg shadow-gray-400/60 dark:shadow-gray-900
+}
+
+.settings-label {
+    @apply mx-auto text-2xl font-semibold
+}
+
+.settings label {
+    @apply text-black dark:text-slate-100
+}
+
+.settings-table {
+    @apply mt-5 text-left
+}
+
+.setting {
+    @apply text-gray-800 dark:text-gray-800
+}
+
+.setting select {
+    width: 95%;
+    @apply text-center font-semibold ml-2 rounded-md border-none text-lg cursor-pointer
+}
+
+.theme-toggle {
+    width: 35px;
+    @apply fixed float-right top-5 right-8 cursor-pointer
+}
+
+.theme-toggle svg {
+    @apply dark:fill-slate-100
+}
+
+.cell.flagged svg {
+    @apply fill-gray-800 dark:fill-gray-900
+}
+
+.cell.mine svg {
+    @apply fill-black dark:fill-red-900
+}
+
+.cell.num-1 svg {
+    @apply fill-blue-600 dark:fill-blue-800
+}
+
+.cell.num-2 svg {
+    @apply fill-green-600 dark:fill-green-800
+}
+
+.cell.num-3 svg {
+    @apply fill-red-600 dark:fill-red-800
+}
+
+.cell.num-4 svg {
+    @apply fill-purple-600 dark:fill-purple-800
+}
+
+.cell.num-5 svg {
+    @apply fill-amber-600 dark:fill-amber-800
+}
+
+.cell.num-6 svg {
+    @apply fill-cyan-600 dark:fill-cyan-800
+}
+
+.cell.num-7 svg {
+    @apply fill-pink-600 dark:fill-pink-800
+}
+
+.cell.num-8 svg {
+    @apply fill-slate-600 dark:fill-slate-800
 }

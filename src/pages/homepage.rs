@@ -47,9 +47,9 @@ pub fn HomePage() -> impl IntoView {
                 }
             })
         >
-            <div class="my-5 inline-block p-4 rounded text-xl bg-zinc-500 dark:bg-gray-700">
-                <div class="mx-auto mb-2 text-2xl">"Settings"</div>
-                <table class="text-left">
+            <div class="settings">
+                <div class="settings-label">"Settings"</div>
+                <table class="settings-table">
                     <tr class="setting difficulty">
                         <td>
                             <label for="difficulty">"Difficulty:"</label>

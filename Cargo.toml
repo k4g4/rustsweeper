@@ -30,7 +30,11 @@ futures = "0.3.28"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 gloo-storage = "0.3.0"
 chrono = "0.4.31"
-web-sys = { version = "0.3.64", features = ["MediaQueryList", "Window", "HtmlDocument"] }
+web-sys = { version = "0.3.64", features = [
+    "MediaQueryList",
+    "Window",
+    "HtmlDocument",
+] }
 axum-extra = { version = "0.8.0", features = ["cookie"] }
 serde = { version = "1.0.188", features = ["serde_derive"] }
 wasm-cookies = "0.2.1"
@@ -69,7 +73,7 @@ site-root = "target/site"
 site-pkg-dir = "pkg"
 
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
-style-file = "style/main.scss"
+style-file = "style/style.css"
 
 # The tailwind input file.
 #
