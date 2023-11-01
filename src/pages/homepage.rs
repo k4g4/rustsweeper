@@ -116,7 +116,7 @@ pub fn HomePage() -> impl IntoView {
                     </tr>
                 </table>
             </div>
-            <div>
+            <div class="btns">
                 <div class="btn">
                     <input type="submit" value="New Game" />
                 </div>

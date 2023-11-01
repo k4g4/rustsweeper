@@ -50,11 +50,19 @@ body {
 }
 
 .btn {
-    @apply mt-3 inline-block font-semibold mx-3 text-white cursor-pointer [&>*]:cursor-pointer rounded-lg p-2 bg-sky-600 ring-1 ring-sky-600/5 shadow-lg shadow-gray-400 dark:shadow-gray-900 hover:bg-sky-700 hover:ring-sky-700
+    @apply mt-3 inline-block font-semibold mx-3 text-white cursor-pointer [&>*]:cursor-pointer rounded-lg bg-sky-600 ring-1 ring-sky-600/5 shadow-lg shadow-gray-400 dark:shadow-gray-900 hover:bg-sky-700 hover:ring-sky-700
+}
+
+.btn a {
+    @apply p-2 inline-block
+}
+
+.btn input {
+    @apply p-2
 }
 
 .disabled {
-    @apply cursor-default
+    @apply cursor-default hover:bg-sky-600 hover:ring-sky-600/5 hover:rounded-lg
 }
 
 .settings {

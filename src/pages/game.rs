@@ -38,7 +38,7 @@ pub fn Game() -> impl IntoView {
             provide_context(game_state_write);
 
             view! {
-                <div class="buttons">
+                <div class="btns">
                     <div class=move || { format!("btn {}", if new_game_enabled() { "" } else { "disabled" }) }>
                         <A
                             href=""
