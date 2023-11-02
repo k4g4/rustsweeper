@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
+use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
+use rand::seq::SliceRandom;
+use wasm_bindgen::JsCast;
 
 use crate::app_settings::Settings;
 use crate::game_logic::{Difficulty, Size};
@@ -11,6 +14,11 @@ use crate::game_logic::{Difficulty, Size};
 pub fn HomePage() -> impl IntoView {
     let (settings, set_settings) =
         expect_context::<(ReadSignal<Settings>, WriteSignal<Settings>)>();
+
+    let (username, set_username) = create_signal({
+        let names = include!("../../names.json");
+        names.choose(&mut rand::thread_rng()).unwrap().to_string()
+    });
 
     view! {
         <Form
@@ -50,8 +58,48 @@ pub fn HomePage() -> impl IntoView {
             <div class="settings">
                 <div class="settings-label">"Settings"</div>
                 <table class="settings-table">
-                    <tr class="setting difficulty">
+                    <tr class="setting name">
+                        <td class="setting-label">
+                            <label for="username">"Name:"</label>
+                        </td>
                         <td>
+                            <input
+                                type="text"
+                                name="username"
+                                prop:value=username
+                                // pattern="[a-zA-Z0-9_]{3,10}"
+                                size="12"
+                                on:input=move |ev| {
+                                    let old_name = username();
+                                    let new_name = event_target_value(&ev);
+                                    if new_name.len() <= 10
+                                        && new_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                                    {
+                                        set_username(new_name);
+                                    } else {
+                                        set_username(old_name);
+
+                                        // invalid input flashes the text box red
+                                        if let Ok(elem) = ev.target().unwrap().dyn_into::<web_sys::HtmlElement>() {
+                                            create_action(|elem: &web_sys::HtmlElement| {
+                                                let elem = elem.clone();
+                                                async move {
+                                                    let flash_css = "
+                                                        border-color: red;
+                                                    ";
+                                                    elem.style().set_css_text(flash_css);
+                                                    TimeoutFuture::new(200).await;
+                                                    elem.style().set_css_text("");
+                                                }
+                                            }).dispatch(elem);
+                                        }
+                                    }
+                                }
+                            />
+                        </td>
+                    </tr>
+                    <tr class="setting difficulty">
+                        <td class="setting-label">
                             <label for="difficulty">"Difficulty:"</label>
                         </td>
                         <td>
@@ -83,7 +131,7 @@ pub fn HomePage() -> impl IntoView {
                         </td>
                     </tr>
                     <tr class="setting size">
-                        <td>
+                        <td class="setting-label">
                             <label for="size">"Board Size:"</label>
                         </td>
                         <td>

@@ -66,7 +66,7 @@ body {
 }
 
 .settings {
-    @apply mt-5 mb-5 inline-block p-5 rounded-xl text-xl text-black dark:text-slate-100 bg-sky-300 dark:bg-zinc-900 shadow-lg shadow-gray-400/60 dark:shadow-gray-900
+    @apply mt-5 mb-5 inline-block p-5 rounded-xl text-xl text-black dark:text-slate-100 bg-sky-500/60 dark:bg-zinc-900 shadow-lg shadow-gray-400/60 dark:shadow-gray-900
 }
 
 .settings-label {
@@ -85,9 +85,17 @@ body {
     @apply text-gray-800 dark:text-gray-800
 }
 
+.setting-label {
+    @apply mr-12 ml-2 my-2 block
+}
+
 .setting select {
-    width: 95%;
-    @apply text-center font-semibold ml-2 rounded-md border-none text-lg cursor-pointer
+    width: 75%;
+    @apply text-center font-semibold mx-6 rounded-md border-none text-lg cursor-pointer
+}
+
+.setting input[type=text] {
+    @apply dark:bg-zinc-700 border-2 dark:border-zinc-500 dark:text-white border-black/40 text-center mx-6 rounded-md text-lg
 }
 
 .theme-toggle {
