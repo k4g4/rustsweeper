@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr};
+use std::fmt::Display;
 
 use chrono::Duration;
 use gloo_timers::future::TimeoutFuture;
@@ -6,6 +6,8 @@ use leptos::*;
 use leptos_router::*;
 use rand::{seq::SliceRandom, Rng};
 use thiserror::Error;
+
+use crate::app_settings::{Difficulty, Size};
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),
@@ -17,13 +19,6 @@ const ADJACENTS: [(isize, isize); 8] = [
     (1, 0),
     (1, 1),
 ];
-
-const EASY: &str = "easy";
-const NORMAL: &str = "normal";
-const HARD: &str = "hard";
-const SMALL: &str = "small";
-const MEDIUM: &str = "medium";
-const LARGE: &str = "large";
 
 #[derive(Error, Debug)]
 pub enum GameParamsError {
@@ -39,76 +34,6 @@ impl Display for GameParamsError {
             match self {
                 GameParamsError::InvalidSize => "Invalid size",
                 GameParamsError::InvalidDifficulty => "Invalid difficulty",
-            }
-        )
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Default)]
-pub enum Difficulty {
-    #[default]
-    Easy,
-    Normal,
-    Hard,
-}
-
-impl FromStr for Difficulty {
-    type Err = GameParamsError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            EASY => Self::Easy,
-            NORMAL => Self::Normal,
-            HARD => Self::Hard,
-            _ => return Err(GameParamsError::InvalidDifficulty),
-        })
-    }
-}
-
-impl Display for Difficulty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Easy => EASY,
-                Self::Normal => NORMAL,
-                Self::Hard => HARD,
-            }
-        )
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Default)]
-pub enum Size {
-    #[default]
-    Small,
-    Medium,
-    Large,
-}
-
-impl FromStr for Size {
-    type Err = GameParamsError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            SMALL => Self::Small,
-            MEDIUM => Self::Medium,
-            LARGE => Self::Large,
-            _ => return Err(GameParamsError::InvalidSize),
-        })
-    }
-}
-
-impl Display for Size {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Small => SMALL,
-                Self::Medium => MEDIUM,
-                Self::Large => LARGE,
             }
         )
     }

@@ -1,58 +1,124 @@
-use std::rc::Rc;
+use std::{ops::RangeInclusive, rc::Rc};
 
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 use rand::seq::SliceRandom;
-use wasm_bindgen::JsCast;
 
-use crate::app_settings::Settings;
-use crate::game_logic::{Difficulty, Size};
+use crate::app_settings::{apply_setting, fetch_setting, Difficulty, Size};
+
+const USERNAME_BOUNDS: RangeInclusive<usize> = 3..=10;
+
+fn valid_chars(username: &str) -> bool {
+    username
+        .chars()
+        .all(|c| c.is_ascii_alphabetic() || c == '_')
+}
 
 /// Renders the home page.
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let (settings, set_settings) =
-        expect_context::<(ReadSignal<Settings>, WriteSignal<Settings>)>();
-
-    let (username, set_username) = create_signal({
+    let (username, set_username) = create_signal(fetch_setting("username").unwrap_or_else(|| {
         let names = include!("../../names.json");
         names.choose(&mut rand::thread_rng()).unwrap().to_string()
-    });
+    }));
+    let (difficulty, set_difficulty) =
+        create_signal(fetch_setting::<Difficulty>("difficulty").unwrap_or_default());
+    let (size, set_size) = create_signal(fetch_setting::<Size>("size").unwrap_or_default());
+
+    let username_ref = create_node_ref::<html::Input>();
+    let error_ref = create_node_ref::<html::Span>();
+    let difficulty_ref = create_node_ref::<html::Select>();
+    let size_ref = create_node_ref::<html::Select>();
+
+    let on_username_input = move |ev| {
+        let old_name = username();
+        let new_name = event_target_value(&ev);
+        if new_name.len() <= *USERNAME_BOUNDS.end() && valid_chars(&new_name) {
+            set_username(new_name);
+        } else {
+            set_username(old_name);
+
+            create_action(move |&()| async move {
+                let username_input = username_ref.get().unwrap();
+
+                let name_input = username_input.prop(
+                    "style",
+                    "
+                    border-color: red;
+                ",
+                );
+
+                let error_span = error_ref.get().unwrap();
+
+                let error_span = error_span.prop(
+                    "style",
+                    "
+                    visibility: visible;
+                    opacity: 1;
+                    transition: opacity .2s linear;
+                ",
+                );
+
+                TimeoutFuture::new(500).await;
+
+                name_input.prop("style", "");
+
+                TimeoutFuture::new(2000).await;
+
+                error_span.prop(
+                    "style",
+                    "
+                    visibility: hidden;
+                    opacity: 0;
+                    transition: visibility 0s .2s, opacity .2s linear;
+                ",
+                );
+            })
+            .dispatch(());
+        }
+    };
+
+    let on_settings_submit = move |ev: ev::SubmitEvent| {
+        let username = username_ref.get().unwrap().value();
+        if USERNAME_BOUNDS.contains(&username.len()) && valid_chars(&username) {
+            apply_setting("username", &username);
+            set_username(username);
+        } else {
+            ev.prevent_default();
+            return;
+        }
+
+        let difficulty_select = difficulty_ref.get().unwrap();
+        if let Ok(selected_difficulty) = difficulty_select.value().parse() {
+            if difficulty() != selected_difficulty {
+                apply_setting("difficulty", &selected_difficulty);
+                set_difficulty(selected_difficulty);
+            }
+        } else {
+            ev.prevent_default();
+            return;
+        }
+
+        let size_select = size_ref.get().unwrap();
+        if let Ok(selected_size) = size_select.value().parse() {
+            if size() != selected_size {
+                apply_setting("size", &selected_size);
+                set_size(selected_size);
+            }
+        } else {
+            ev.prevent_default();
+            return;
+        }
+    };
 
     view! {
         <Form
             method="GET"
-
             action="game"
-
+            on:submit=on_settings_submit
             on_form_data=Rc::new(move |form_data| {
-                if let Some(difficulty) = form_data.get("difficulty").as_string() {
-                    if let Ok(difficulty) = difficulty.parse() {
-                        settings.with(|settings| {
-                            if settings.difficulty != difficulty {
-                                set_settings.update(|settings| {
-                                    settings.difficulty = difficulty;
-                                });
-
-                                Settings::set("difficulty", &difficulty);
-                            }
-                        });
-                    }
-                }
-                if let Some(size) = form_data.get("size").as_string() {
-                    if let Ok(size) = size.parse() {
-                        settings.with(|settings| {
-                            if settings.size != size {
-                                set_settings.update(|settings| {
-                                    settings.size = size;
-                                });
-
-                                Settings::set("size", &size);
-                            }
-                        });
-                    }
-                }
+                form_data.delete("username"); //don't need this in the query
             })
         >
             <div class="settings">
@@ -67,61 +133,39 @@ pub fn HomePage() -> impl IntoView {
                                 type="text"
                                 name="username"
                                 prop:value=username
-                                // pattern="[a-zA-Z0-9_]{3,10}"
                                 size="12"
-                                on:input=move |ev| {
-                                    let old_name = username();
-                                    let new_name = event_target_value(&ev);
-                                    if new_name.len() <= 10
-                                        && new_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-                                    {
-                                        set_username(new_name);
-                                    } else {
-                                        set_username(old_name);
-
-                                        // invalid input flashes the text box red
-                                        if let Ok(elem) = ev.target().unwrap().dyn_into::<web_sys::HtmlElement>() {
-                                            create_action(|elem: &web_sys::HtmlElement| {
-                                                let elem = elem.clone();
-                                                async move {
-                                                    let flash_css = "
-                                                        border-color: red;
-                                                    ";
-                                                    elem.style().set_css_text(flash_css);
-                                                    TimeoutFuture::new(200).await;
-                                                    elem.style().set_css_text("");
-                                                }
-                                            }).dispatch(elem);
-                                        }
-                                    }
-                                }
+                                node_ref=username_ref
+                                on:input=on_username_input
                             />
+                            <div class="username-error-container">
+                                <span class="username-error" node_ref=error_ref>
+                                    "Name must be 3-10 alphanumeric characters and underscores"
+                                </span>
+                            </div>
                         </td>
                     </tr>
+
                     <tr class="setting difficulty">
                         <td class="setting-label">
                             <label for="difficulty">"Difficulty:"</label>
                         </td>
                         <td>
-                            <select name="difficulty">
+                            <select name="difficulty" node_ref=difficulty_ref>
                             {
                                 [
                                     Difficulty::Easy,
                                     Difficulty::Normal,
                                     Difficulty::Hard,
-                                ].iter().map(|difficulty| {
+                                ].iter().map(|curr_difficulty| {
                                     view! {
                                         <option
-                                            value=difficulty.to_string()
-                                            selected=move || {
-                                                settings.with(|settings|
-                                                    settings.difficulty == *difficulty)
-                                            }
+                                            value=curr_difficulty.to_string()
+                                            selected=move || difficulty() == *curr_difficulty
                                         >
                                         {
-                                            let mut inner = difficulty.to_string();
-                                            inner[..1].make_ascii_uppercase();
-                                            inner
+                                            let mut difficulty_text = curr_difficulty.to_string();
+                                            difficulty_text[..1].make_ascii_uppercase();
+                                            difficulty_text
                                         }
                                         </option>
                                     }
@@ -130,30 +174,28 @@ pub fn HomePage() -> impl IntoView {
                             </select>
                         </td>
                     </tr>
+
                     <tr class="setting size">
                         <td class="setting-label">
                             <label for="size">"Board Size:"</label>
                         </td>
                         <td>
-                            <select name="size">
+                            <select name="size" node_ref=size_ref>
                             {
                                 [
                                     Size::Small,
                                     Size::Medium,
                                     Size::Large,
-                                ].iter().map(|size| {
+                                ].iter().map(|curr_size| {
                                     view! {
                                         <option
-                                            value=size.to_string()
-                                            selected=move || {
-                                                settings.with(|settings|
-                                                    settings.size == *size)
-                                            }
+                                            value=curr_size.to_string()
+                                            selected=move || size() == *curr_size
                                         >
                                         {
-                                            let mut inner = size.to_string();
-                                            inner[..1].make_ascii_uppercase();
-                                            inner
+                                            let mut size_text = curr_size.to_string();
+                                            size_text[..1].make_ascii_uppercase();
+                                            size_text
                                         }
                                         </option>
                                     }
@@ -164,6 +206,7 @@ pub fn HomePage() -> impl IntoView {
                     </tr>
                 </table>
             </div>
+
             <div class="btns">
                 <div class="btn">
                     <input type="submit" value="New Game" />

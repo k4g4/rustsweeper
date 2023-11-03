@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use crate::game_logic::{Difficulty, Size};
+use crate::game_logic::GameParamsError;
 use cfg_if::cfg_if;
 
 #[derive(Copy, Clone, Default)]
@@ -45,85 +45,120 @@ impl FromStr for Theme {
     }
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct Settings {
-    pub theme: Theme,
-    pub difficulty: Difficulty,
-    pub size: Size,
+const EASY: &str = "easy";
+const NORMAL: &str = "normal";
+const HARD: &str = "hard";
+
+#[derive(PartialEq, Copy, Clone, Default)]
+pub enum Difficulty {
+    #[default]
+    Easy,
+    Normal,
+    Hard,
 }
 
-impl Settings {
-    cfg_if! { if #[cfg(feature = "ssr")] {
+impl FromStr for Difficulty {
+    type Err = GameParamsError;
 
-    pub fn fetch() -> Self {
-        if let Some(leptos_axum::RequestParts { headers, ..}) = leptos::use_context() {
-            let jar = axum_extra::extract::CookieJar::from_headers(&headers);
-
-            Self {
-                theme: jar.get("theme").map_or(Default::default(), |cookie|
-                    cookie.value().parse().unwrap_or_default()),
-                difficulty: jar.get("difficulty").map_or(Default::default(), |cookie|
-                    cookie.value().parse().unwrap_or_default()),
-                size: jar.get("size").map_or(Default::default(), |cookie|
-                    cookie.value().parse().unwrap_or_default()),
-            }
-        } else {
-            Self::default()
-        }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            EASY => Self::Easy,
+            NORMAL => Self::Normal,
+            HARD => Self::Hard,
+            _ => return Err(GameParamsError::InvalidDifficulty),
+        })
     }
-
-    pub fn set<T: Display>(_name: &str, _value: &T) {}
-
-    } else if #[cfg(target_arch = "wasm32")] {
-
-    pub fn fetch() -> Self {
-        let theme = if let Some(Ok(theme)) = wasm_cookies::get("theme") {
-            theme.parse().unwrap_or_default()
-        } else if let Ok(Some(mql)) = leptos::window().match_media("(prefers-color-scheme: dark)") {
-            if mql.matches() {
-                Theme::Dark
-            } else {
-                Theme::Light
-            }
-        } else {
-            Theme::default()
-        };
-
-        let difficulty = if let Some(Ok(difficulty)) = wasm_cookies::get("difficulty") {
-            difficulty.parse().unwrap_or_default()
-        } else {
-            Difficulty::default()
-        };
-
-        let size = if let Some(Ok(size)) = wasm_cookies::get("size") {
-            size.parse().unwrap_or_default()
-        } else {
-            Size::default()
-        };
-
-        Self {
-            theme,
-            difficulty,
-            size,
-        }
-    }
-
-    pub fn set<T: Display>(name: &str, value: &T) {
-        wasm_cookies::set(
-            name,
-            &value.to_string(),
-            &wasm_cookies::CookieOptions::default()
-                .expires_after(chrono::Duration::weeks(999).to_std().expect("convert to std duration")));
-    }
-
-    } else {
-    // stubs for rust-analyzer, shouldn't actually get called
-
-    pub fn fetch() -> Self {
-        Self::default()
-    }
-
-    pub fn set<T: Display>(_name: &str, _value: &T) {}
-
-    }}
 }
+
+impl Display for Difficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Easy => EASY,
+                Self::Normal => NORMAL,
+                Self::Hard => HARD,
+            }
+        )
+    }
+}
+
+const SMALL: &str = "small";
+const MEDIUM: &str = "medium";
+const LARGE: &str = "large";
+
+#[derive(PartialEq, Copy, Clone, Default)]
+pub enum Size {
+    #[default]
+    Small,
+    Medium,
+    Large,
+}
+
+impl FromStr for Size {
+    type Err = GameParamsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            SMALL => Self::Small,
+            MEDIUM => Self::Medium,
+            LARGE => Self::Large,
+            _ => return Err(GameParamsError::InvalidSize),
+        })
+    }
+}
+
+impl Display for Size {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Small => SMALL,
+                Self::Medium => MEDIUM,
+                Self::Large => LARGE,
+            }
+        )
+    }
+}
+
+cfg_if! { if #[cfg(feature = "ssr")] {
+
+pub fn fetch_setting<T: FromStr + Default>(setting: &str) -> Option<T> {
+    leptos::use_context().and_then(|leptos_axum::RequestParts { headers, ..}| {
+        let jar = axum_extra::extract::CookieJar::from_headers(&headers);
+        jar.get(setting).and_then(|cookie| cookie.value().parse().ok())
+    })
+}
+
+pub fn apply_setting<T: Display>(_setting: &str, _value: &T) {
+    unimplemented!()
+}
+
+} else if #[cfg(target_arch = "wasm32")] {
+
+pub fn fetch_setting<T: FromStr>(setting: &str) -> Option<T> {
+    Some(wasm_cookies::get(setting)?.ok()?.parse().ok()?)
+}
+
+pub fn apply_setting<T: Display>(setting: &str, value: &T) {
+    wasm_cookies::set(
+        setting,
+        &value.to_string(),
+        &wasm_cookies::CookieOptions::default()
+            .expires_after(chrono::Duration::weeks(999).to_std().expect("convert to std duration")));
+}
+
+} else {
+// stubs for rust-analyzer, shouldn't actually get called
+
+pub fn fetch_setting<T: FromStr + Default>(_setting: &str) -> Option<T> {
+    Default::default()
+}
+
+pub fn apply_setting<T: Display>(_setting: &str, _value: &T) {
+    unimplemented!()
+}
+
+}}

@@ -3,7 +3,7 @@ use leptos_meta::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::app_settings::{Settings, Theme};
+use crate::app_settings::{apply_setting, fetch_setting, Theme};
 use crate::pages::{Error, Game, HomePage};
 
 const LIGHTBULB_SVG: &str = include_str!("../svgs/lightbulb.svg");
@@ -13,9 +13,17 @@ const MOON_SVG: &str = include_str!("../svgs/moon.svg");
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let settings = Settings::fetch();
-    let (settings, set_settings) = create_signal(settings);
-    provide_context((settings, set_settings));
+    let theme_setting = fetch_setting::<Theme>("theme");
+    let (theme, set_theme) = create_signal(theme_setting.unwrap_or_default());
+    if theme_setting.is_none() {
+        Effect::new(move |_| {
+            if let Ok(Some(mql)) = leptos::window().match_media("(prefers-color-scheme: dark)") {
+                if mql.matches() {
+                    set_theme(Theme::Dark);
+                }
+            }
+        });
+    }
 
     view! {
         <Stylesheet id="leptos" href="/pkg/tailwind.css" />
@@ -23,9 +31,7 @@ pub fn App() -> impl IntoView {
 
         <Title text="Rustsweeper" />
 
-        <Html class=move || {
-            settings.with(|Settings { theme, ..}| theme.to_string())
-        }/>
+        <Html class=move || theme().to_string() />
 
         <Router fallback=|| {
             let mut outside_errors = Errors::default();
@@ -41,24 +47,16 @@ pub fn App() -> impl IntoView {
                     class="theme-toggle"
 
                     on:click=move |_| {
-                        let new_theme = settings.with(|settings| settings.theme.toggle());
-
-                        set_settings.update(|settings| {
-                            settings.theme = new_theme;
-                        });
-
-                        Settings::set("theme", &new_theme);
+                        let new_theme = theme().toggle();
+                        set_theme(new_theme);
+                        apply_setting("theme", &new_theme);
                     }
 
                     inner_html=move || {
-                        settings.with(|settings| match settings.theme {
-                            Theme::Light => {
-                                MOON_SVG
-                            }
-                            Theme::Dark => {
-                                LIGHTBULB_SVG
-                            }
-                        })
+                        match theme() {
+                            Theme::Light => MOON_SVG,
+                            Theme::Dark => LIGHTBULB_SVG,
+                        }
                     }
                 />
                 <Routes>

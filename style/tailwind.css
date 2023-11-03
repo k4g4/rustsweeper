@@ -41,12 +41,11 @@ body {
 }
 
 .cell:not(.cleared):hover {
-    cursor: pointer;
+    @apply cursor-pointer
 }
 
 .info {
-    height: 20px;
-    @apply text-xl mt-8 mb-8 font-semibold text-gray-950 dark:text-slate-300
+    @apply h-5 text-xl mt-8 mb-8 font-semibold text-gray-950 dark:text-slate-300
 }
 
 .btn {
@@ -89,9 +88,23 @@ body {
     @apply mr-12 ml-2 my-2 block
 }
 
+.username-error-container {
+    @apply relative
+}
+
+.username-error {
+    @apply absolute left-56 -bottom-3 w-56 invisible opacity-0 z-10 px-3 py-2 text-sm font-medium bg-zinc-900 rounded-lg text-slate-100
+}
+
+.username-error::after {
+    content: " ";
+    border: solid 6px;
+    border-color: transparent rgb(24 24 27) transparent transparent;
+    @apply absolute top-1/2 right-full -mt-1
+}
+
 .setting select {
-    width: 75%;
-    @apply text-center font-semibold mx-6 rounded-md border-none text-lg cursor-pointer
+    @apply w-3/4 text-center font-semibold mx-6 rounded-md border-none text-lg cursor-pointer
 }
 
 .setting input[type=text] {
@@ -99,8 +112,7 @@ body {
 }
 
 .theme-toggle {
-    width: 35px;
-    @apply fixed float-right top-5 right-8 cursor-pointer
+    @apply fixed w-9 float-right top-5 right-8 cursor-pointer
 }
 
 .theme-toggle svg {

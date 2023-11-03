@@ -2,7 +2,8 @@ use leptos::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState, Size};
+use crate::app_settings::Size;
+use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState};
 use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
