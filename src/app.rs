@@ -3,8 +3,8 @@ use leptos_meta::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::app_settings::{apply_setting, fetch_setting, Theme, Username};
-use crate::pages::{Error, Game, HomePage};
+use crate::game_settings::{apply_setting, fetch_setting, Theme, Username};
+use crate::pages::{Error, Game, HomePage, Scores};
 
 const LIGHTBULB_SVG: &str = include_str!("../svgs/lightbulb.svg");
 const MOON_SVG: &str = include_str!("../svgs/moon.svg");
@@ -66,6 +66,7 @@ pub fn App() -> impl IntoView {
                 <Routes>
                     <Route path="" view=HomePage />
                     <Route path="game" view=Game />
+                    <Route path="scores" view=Scores />
                 </Routes>
             </main>
         </Router>

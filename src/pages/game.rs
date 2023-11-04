@@ -2,8 +2,8 @@ use leptos::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::app_settings::Size;
 use crate::game_logic::{CellInteraction, CellKind, GameParams, GameState};
+use crate::game_settings::Size;
 use crate::pages::Error;
 
 const NUM_SVGS: [&str; 9] = [
@@ -24,11 +24,9 @@ const FLAG_SVG: &str = include_str!("../../svgs/flag.svg");
 /// Renders the game.
 #[component]
 pub fn Game() -> impl IntoView {
-    let params = use_query::<GameParams>();
+    window_event_listener(ev::contextmenu, |ev| ev.prevent_default());
 
-    window_event_listener(ev::contextmenu, |event| event.prevent_default());
-
-    params.with_untracked(|params| match params {
+    use_query::<GameParams>().with_untracked(|params| match params {
         Ok(params) => {
             let game_state = GameState::new(*params);
             let (rows, columns) = game_state.dimensions();

@@ -189,7 +189,7 @@ cfg_if! { if #[cfg(feature = "ssr")] {
     })
 }
 
-pub fn apply_setting<T: Display>(_setting: &str, _value: &T) {
+pub fn apply_setting<T: ToString>(_setting: &str, _value: &T) {
     unimplemented!()
 }
 
@@ -199,7 +199,7 @@ pub fn fetch_setting<T: FromStr>(setting: &str) -> Option<T> {
     Some(wasm_cookies::get(setting)?.ok()?.parse().ok()?)
 }
 
-pub fn apply_setting<T: Display>(setting: &str, value: &T) {
+pub fn apply_setting<T: ToString>(setting: &str, value: &T) {
     wasm_cookies::set(
         setting,
         &value.to_string(),
@@ -214,7 +214,7 @@ pub fn fetch_setting<T: FromStr + Default>(_setting: &str) -> Option<T> {
     Default::default()
 }
 
-pub fn apply_setting<T: Display>(_setting: &str, _value: &T) {
+pub fn apply_setting<T: ToString>(_setting: &str, _value: &T) {
     unimplemented!()
 }
 

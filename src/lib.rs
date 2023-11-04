@@ -1,9 +1,10 @@
 use cfg_if::cfg_if;
 pub mod app;
 pub mod app_error;
-pub mod app_settings;
 pub mod game_logic;
+pub mod game_settings;
 pub mod pages;
+pub mod utils;
 
 cfg_if! { if #[cfg(feature = "hydrate")] {
     use leptos::*;

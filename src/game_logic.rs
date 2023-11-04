@@ -7,7 +7,7 @@ use leptos_router::*;
 use rand::{seq::SliceRandom, Rng};
 use thiserror::Error;
 
-use crate::app_settings::{Difficulty, ParseDifficultyError, ParseSizeError, Size, Username};
+use crate::game_settings::{Difficulty, ParseDifficultyError, ParseSizeError, Size, Username};
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),

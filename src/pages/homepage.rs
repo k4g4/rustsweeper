@@ -3,8 +3,13 @@ use std::{ops::RangeInclusive, rc::Rc};
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlFormElement;
 
-use crate::app_settings::{apply_setting, fetch_setting, Difficulty, Size, Username};
+use crate::{
+    game_settings::{apply_setting, fetch_setting, Difficulty, Size, Username},
+    utils::Title,
+};
 
 const USERNAME_BOUNDS: RangeInclusive<usize> = 3..=10;
 const DICE_SVG: &str = include_str!("../../svgs/dice.svg");
@@ -25,6 +30,7 @@ pub fn HomePage() -> impl IntoView {
     let (difficulty, set_difficulty) =
         create_signal(fetch_setting::<Difficulty>("difficulty").unwrap_or_default());
     let (size, set_size) = create_signal(fetch_setting::<Size>("size").unwrap_or_default());
+    let (form_action, set_form_action) = create_signal("/");
 
     let username_ref = create_node_ref::<html::Input>();
     let error_ref = create_node_ref::<html::Span>();
@@ -33,16 +39,13 @@ pub fn HomePage() -> impl IntoView {
 
     let username_error_action = create_action(move |&()| async move {
         let username_input = username_ref.get().expect("noderef assigned");
-
-        let name_input = username_input.prop(
+        let username_input = username_input.prop(
             "style",
             "
             border-color: red;
         ",
         );
-
         let error_span = error_ref.get().expect("noderef assigned");
-
         let error_span = error_span.prop(
             "style",
             "
@@ -51,13 +54,9 @@ pub fn HomePage() -> impl IntoView {
             transition: opacity .2s linear;
         ",
         );
-
         TimeoutFuture::new(500).await;
-
-        name_input.prop("style", "");
-
+        username_input.prop("style", "");
         TimeoutFuture::new(2000).await;
-
         error_span.prop(
             "style",
             "
@@ -111,12 +110,17 @@ pub fn HomePage() -> impl IntoView {
             ev.prevent_default();
             return;
         }
+        ev.target()
+            .unwrap()
+            .dyn_into::<HtmlFormElement>()
+            .unwrap()
+            .set_action(form_action());
     };
 
     view! {
         <Form
             method="GET"
-            action="game"
+            action="/"
             on:submit=on_settings_submit
             on_form_data=Rc::new(move |form_data| {
                 form_data.delete("username"); //don't need this in the query
@@ -141,7 +145,8 @@ pub fn HomePage() -> impl IntoView {
                             <span
                                 class="random-name"
                                 on:click=move |_| set_username(Username::random())
-                                inner_html=DICE_SVG/>
+                                inner_html=DICE_SVG
+                            />
                             <div class="username-error-container">
                                 <span class="username-error" node_ref=error_ref>
                                     "Name must be 3-10 alphanumeric characters and underscores"
@@ -167,11 +172,7 @@ pub fn HomePage() -> impl IntoView {
                                             value=curr_difficulty.to_string()
                                             selected=move || difficulty() == *curr_difficulty
                                         >
-                                        {
-                                            let mut difficulty_text = curr_difficulty.to_string();
-                                            difficulty_text[..1].make_ascii_uppercase();
-                                            difficulty_text
-                                        }
+                                        {curr_difficulty.title()}
                                         </option>
                                     }
                                 }).collect_view()
@@ -197,11 +198,7 @@ pub fn HomePage() -> impl IntoView {
                                             value=curr_size.to_string()
                                             selected=move || size() == *curr_size
                                         >
-                                        {
-                                            let mut size_text = curr_size.to_string();
-                                            size_text[..1].make_ascii_uppercase();
-                                            size_text
-                                        }
+                                        {curr_size.title()}
                                         </option>
                                     }
                                 }).collect_view()
@@ -214,7 +211,18 @@ pub fn HomePage() -> impl IntoView {
 
             <div class="btns">
                 <div class="btn">
-                    <input type="submit" value="New Game" />
+                    <input
+                        type="submit"
+                        value="New Game"
+                        on:click=move |_| set_form_action("/game")
+                    />
+                </div>
+                <div class="btn">
+                    <input
+                        type="submit"
+                        value="Scores"
+                        on:click=move |_| set_form_action("/scores")
+                    />
                 </div>
             </div>
         </Form>
