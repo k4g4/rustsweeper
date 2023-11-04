@@ -3,7 +3,7 @@ use leptos_meta::*;
 use leptos_router::*;
 
 use crate::app_error::AppError;
-use crate::app_settings::{apply_setting, fetch_setting, Theme};
+use crate::app_settings::{apply_setting, fetch_setting, Theme, Username};
 use crate::pages::{Error, Game, HomePage};
 
 const LIGHTBULB_SVG: &str = include_str!("../svgs/lightbulb.svg");
@@ -24,6 +24,10 @@ pub fn App() -> impl IntoView {
             }
         });
     }
+
+    let (username, set_username) = create_signal(Username::from(fetch_setting("username")));
+    provide_context(username);
+    provide_context(set_username);
 
     view! {
         <Stylesheet id="leptos" href="/pkg/tailwind.css" />

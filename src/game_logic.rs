@@ -7,7 +7,7 @@ use leptos_router::*;
 use rand::{seq::SliceRandom, Rng};
 use thiserror::Error;
 
-use crate::app_settings::{Difficulty, Size};
+use crate::app_settings::{Difficulty, ParseDifficultyError, ParseSizeError, Size, Username};
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),
@@ -22,20 +22,16 @@ const ADJACENTS: [(isize, isize); 8] = [
 
 #[derive(Error, Debug)]
 pub enum GameParamsError {
-    InvalidSize,
-    InvalidDifficulty,
+    InvalidSize(ParseSizeError),
+    InvalidDifficulty(ParseDifficultyError),
 }
 
 impl Display for GameParamsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                GameParamsError::InvalidSize => "Invalid size",
-                GameParamsError::InvalidDifficulty => "Invalid difficulty",
-            }
-        )
+        match self {
+            GameParamsError::InvalidSize(err) => err.fmt(f),
+            GameParamsError::InvalidDifficulty(err) => err.fmt(f),
+        }
     }
 }
 
@@ -64,6 +60,7 @@ pub struct GameInfo {
 
 impl GameInfo {
     pub fn to_view(&self) -> impl IntoView {
+        let username = (expect_context::<ReadSignal<Username>>())().name;
         let time = {
             let duration = Duration::seconds(self.elapsed_seconds as i64);
             format!(
@@ -86,7 +83,7 @@ impl GameInfo {
             }
             GameStatus::GameOver => {
                 view! {
-                    "Game over!"
+                    {format!("Game over, {username} 😭")}
                     <br />
                     "Time - " {time}
                     <br />
@@ -96,7 +93,7 @@ impl GameInfo {
             }
             GameStatus::Victory => {
                 view! {
-                    "You won!"
+                    {format!("You won, {username}! 🥳")}
                     <br />
                     "Time - " {time}
                     <br />

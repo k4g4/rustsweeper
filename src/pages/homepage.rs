@@ -3,9 +3,8 @@ use std::{ops::RangeInclusive, rc::Rc};
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
-use rand::seq::SliceRandom;
 
-use crate::app_settings::{apply_setting, fetch_setting, Difficulty, Size};
+use crate::app_settings::{apply_setting, fetch_setting, Difficulty, Size, Username};
 
 const USERNAME_BOUNDS: RangeInclusive<usize> = 3..=10;
 const DICE_SVG: &str = include_str!("../../svgs/dice.svg");
@@ -16,17 +15,13 @@ fn valid_chars(username: &str) -> bool {
         .all(|c| c.is_ascii_alphabetic() || c == '_')
 }
 
-fn random_name() -> String {
-    include!("../../names.json")
-        .choose(&mut rand::thread_rng())
-        .expect("array is nonempty")
-        .to_string()
-}
-
 /// Renders the home page.
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let (username, set_username) = create_signal(fetch_setting("username"));
+    let (username, set_username) = (
+        expect_context::<ReadSignal<Username>>(),
+        expect_context::<WriteSignal<Username>>(),
+    );
     let (difficulty, set_difficulty) =
         create_signal(fetch_setting::<Difficulty>("difficulty").unwrap_or_default());
     let (size, set_size) = create_signal(fetch_setting::<Size>("size").unwrap_or_default());
@@ -74,22 +69,20 @@ pub fn HomePage() -> impl IntoView {
     });
 
     let on_username_input = move |ev| {
-        let old_name = username();
         let new_name = event_target_value(&ev);
         if new_name.len() <= *USERNAME_BOUNDS.end() && valid_chars(&new_name) {
-            set_username(Some(new_name));
+            set_username(Username::new(new_name));
         } else {
-            set_username(old_name);
+            set_username(username());
             username_error_action.dispatch(());
         }
     };
 
     let on_settings_submit = move |ev: ev::SubmitEvent| {
-        let provided_username = username_ref.get().expect("noderef assigned").value();
-        if USERNAME_BOUNDS.contains(&provided_username.len()) && valid_chars(&provided_username) {
-            if !username().is_some_and(|username| username == provided_username) {
-                apply_setting("username", &provided_username);
-                set_username(Some(provided_username));
+        let Username { name, stable } = username();
+        if USERNAME_BOUNDS.contains(&name.len()) && valid_chars(&name) {
+            if stable {
+                apply_setting("username", &name);
             }
         } else {
             ev.prevent_default();
@@ -140,18 +133,14 @@ pub fn HomePage() -> impl IntoView {
                             <input
                                 type="text"
                                 name="username"
-                                prop:value=move || {
-                                    username().unwrap_or_else(random_name)
-                                }
+                                prop:value=move || username().name
                                 size="12"
                                 node_ref=username_ref
                                 on:input=on_username_input
                             />
                             <span
                                 class="random-name"
-                                on:click=move |_| {
-                                    username_ref.get().expect("noderef assigned").set_value(&random_name());
-                                }
+                                on:click=move |_| set_username(Username::random())
                                 inner_html=DICE_SVG/>
                             <div class="username-error-container">
                                 <span class="username-error" node_ref=error_ref>
