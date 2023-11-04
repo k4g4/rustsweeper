@@ -126,11 +126,11 @@ pub fn HomePage() -> impl IntoView {
                 form_data.delete("username"); //don't need this in the query
             })
         >
-            <div class="settings">
-                <div class="settings-label">"Settings"</div>
-                <table class="settings-table">
-                    <tr class="setting name">
-                        <td class="setting-label">
+            <div class="panel">
+                <div class="panel-label">"Settings"</div>
+                <table class="panel-table">
+                    <tr class="panel-row">
+                        <td class="panel-row-label">
                             <label for="username">"Name:"</label>
                         </td>
                         <td>
@@ -155,8 +155,8 @@ pub fn HomePage() -> impl IntoView {
                         </td>
                     </tr>
 
-                    <tr class="setting difficulty">
-                        <td class="setting-label">
+                    <tr class="panel-row">
+                        <td class="panel-row-label">
                             <label for="difficulty">"Difficulty:"</label>
                         </td>
                         <td>
@@ -181,8 +181,8 @@ pub fn HomePage() -> impl IntoView {
                         </td>
                     </tr>
 
-                    <tr class="setting size">
-                        <td class="setting-label">
+                    <tr class="panel-row">
+                        <td class="panel-row-label">
                             <label for="size">"Board Size:"</label>
                         </td>
                         <td>
