@@ -3,9 +3,11 @@ use std::str::FromStr;
 
 use cfg_if::cfg_if;
 use rand::seq::SliceRandom;
+use serde::de::IntoDeserializer;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub enum Theme {
     #[default]
     Light,
@@ -46,7 +48,7 @@ impl FromStr for Theme {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Username {
     pub name: String,
     pub stable: bool,
@@ -84,10 +86,6 @@ impl From<Option<String>> for Username {
     }
 }
 
-const EASY: &str = "easy";
-const NORMAL: &str = "normal";
-const HARD: &str = "hard";
-
 #[derive(Error, Debug)]
 pub struct ParseDifficultyError;
 
@@ -97,7 +95,8 @@ impl Display for ParseDifficultyError {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Default)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Difficulty {
     #[default]
     Easy,
@@ -106,35 +105,18 @@ pub enum Difficulty {
 }
 
 impl FromStr for Difficulty {
-    type Err = ParseDifficultyError;
+    type Err = serde::de::value::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            EASY => Self::Easy,
-            NORMAL => Self::Normal,
-            HARD => Self::Hard,
-            _ => return Err(ParseDifficultyError),
-        })
+        Self::deserialize(s.into_deserializer())
     }
 }
 
 impl Display for Difficulty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Easy => EASY,
-                Self::Normal => NORMAL,
-                Self::Hard => HARD,
-            }
-        )
+        self.serialize(f)
     }
 }
-
-const SMALL: &str = "small";
-const MEDIUM: &str = "medium";
-const LARGE: &str = "large";
 
 #[derive(Error, Debug)]
 pub struct ParseSizeError;
@@ -145,7 +127,8 @@ impl Display for ParseSizeError {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Default)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Size {
     #[default]
     Small,
@@ -154,37 +137,24 @@ pub enum Size {
 }
 
 impl FromStr for Size {
-    type Err = ParseSizeError;
+    type Err = serde::de::value::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            SMALL => Self::Small,
-            MEDIUM => Self::Medium,
-            LARGE => Self::Large,
-            _ => return Err(ParseSizeError),
-        })
+        Self::deserialize(s.into_deserializer())
     }
 }
 
 impl Display for Size {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Small => SMALL,
-                Self::Medium => MEDIUM,
-                Self::Large => LARGE,
-            }
-        )
+        self.serialize(f)
     }
 }
 
 cfg_if! { if #[cfg(feature = "ssr")] {
 
-    pub fn fetch_setting<T: FromStr + Default>(setting: &str) -> Option<T> {
-        leptos::use_context().and_then(|leptos_axum::RequestParts { headers, ..}| {
-            let jar = axum_extra::extract::CookieJar::from_headers(&headers);
+pub fn fetch_setting<T: FromStr + Default>(setting: &str) -> Option<T> {
+    leptos::use_context().and_then(|leptos_axum::RequestParts { headers, ..}| {
+        let jar = axum_extra::extract::CookieJar::from_headers(&headers);
         jar.get(setting).and_then(|cookie| cookie.value().parse().ok())
     })
 }

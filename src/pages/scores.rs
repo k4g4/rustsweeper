@@ -1,5 +1,6 @@
 use leptos::*;
 use leptos_router::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     app_error::AppError,
@@ -10,6 +11,20 @@ use crate::{
 
 const MAX_SCORES: usize = 10;
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Entry {
+    name: String,
+    time: String,
+}
+
+#[server(GetScores)]
+async fn get_scores(difficulty: Difficulty, size: Size) -> Result<Vec<Entry>, ServerFnError> {
+    Ok(vec![Entry {
+        name: difficulty.to_string(),
+        time: size.to_string(),
+    }])
+}
+
 /// Displays the scoreboard.
 #[component]
 pub fn Scores() -> impl IntoView {
@@ -18,7 +33,7 @@ pub fn Scores() -> impl IntoView {
     provide_context((difficulty, size));
     provide_context((set_difficulty, set_size));
 
-    match (difficulty(), size()) {
+    match (difficulty.get_untracked(), size.get_untracked()) {
         (Some(difficulty), Some(size)) => view! {
             <ScoreFilters difficulty size />
 
@@ -109,6 +124,10 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
 #[component]
 fn Scoreboard() -> impl IntoView {
     let (difficulty, size) = expect_context::<(Memo<Option<Difficulty>>, Memo<Option<Size>>)>();
+    let filters = move || (difficulty().unwrap_or_default(), size().unwrap_or_default());
+    let score_getter = create_resource(filters, |(difficulty, size)| async move {
+        get_scores(difficulty, size).await.unwrap_or_default()
+    });
 
     view! {
         <div>
@@ -124,22 +143,35 @@ fn Scoreboard() -> impl IntoView {
                         "Time"
                     </th>
                 </tr>
-                {
-                    (1..=MAX_SCORES).map(|n| view! {
-                        <tr class={ if n % 2 == 0 { "even" } else { "odd" }}>
-                            <td class="n">
-                                { n.to_string() }
-                            </td>
-                            <td class="name">
-                                {move || difficulty().map(|difficulty| difficulty.to_string())}
-                            </td>
-                            <td class="time">
-                                {move || size().map(|size| size.to_string())}
-                            </td>
-                        </tr>
-                    }).collect_view()
-                }
+                <Transition fallback=move || view! { <ScoreRows scores=vec![] /> }>
+                    {move || view! { <ScoreRows scores=score_getter().unwrap_or_default() /> }}
+                </Transition>
             </table>
         </div>
     }
+}
+
+#[component]
+fn ScoreRows(mut scores: Vec<Entry>) -> impl IntoView {
+    scores.resize_with(MAX_SCORES, Default::default);
+
+    scores
+        .into_iter()
+        .zip(1..=MAX_SCORES)
+        .map(|(Entry { name, time }, n)| {
+            view! {
+                <tr class={ if n % 2 == 0 { "even" } else { "odd" }}>
+                    <td class="n">
+                        { n.to_string() }
+                    </td>
+                    <td class="name">
+                        {name}
+                    </td>
+                    <td class="time">
+                        {time}
+                    </td>
+                </tr>
+            }
+        })
+        .collect_view()
 }

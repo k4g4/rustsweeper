@@ -1,23 +1,34 @@
 cfg_if::cfg_if! { if #[cfg(feature = "ssr")] {
-
-use axum::{routing::post, Router, response::Response as AxumResponse, body::{boxed, Body, BoxBody}, extract::State, response::IntoResponse,
-http::{Request,Response,StatusCode, Uri}};
+    use axum::{
+        body::{boxed, Body, BoxBody},
+        extract::State,
+        http::{Request, Response, StatusCode, Uri},
+        response::IntoResponse,
+        response::Response as AxumResponse,
+        routing::post,
+        Router,
+    };
 use tower::ServiceExt;
 use tower_http::services::ServeDir;
+use sqlx::SqlitePool;
 use leptos::*;
 use leptos::logging::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
+
 use rustsweeper::app::App;
+
+const DATABASE_URL: &str = "";
 
 #[tokio::main]
 async fn main() {
-
-    simple_logger::init_with_level(log::Level::Info).expect("couldn't initialize logging");
+    simple_logger::init_with_level(log::Level::Info).expect("logging initializes");
 
     let conf = get_configuration(None).await.unwrap();
     let leptos_options = conf.leptos_options;
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
+
+    let _pool = sqlx::SqlitePool::connect(DATABASE_URL).await.expect("sqlite ready for connections");
 
     let app = Router::new()
         .route("/api/*fn_name", post(leptos_axum::handle_server_fns))
@@ -29,7 +40,7 @@ async fn main() {
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+        .expect("axum server binds to addr");
 }
 
 pub async fn file_and_error_handler(uri: Uri, State(options): State<LeptosOptions>, req: Request<Body>) -> AxumResponse {

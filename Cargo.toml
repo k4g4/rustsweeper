@@ -38,6 +38,7 @@ web-sys = { version = "0.3.64", features = [
 axum-extra = { version = "0.8.0", features = ["cookie"] }
 serde = { version = "1.0.188", features = ["serde_derive"] }
 wasm-cookies = "0.2.1"
+sqlx = { version = "0.7.2", features = ["sqlite"], optional = true }
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
@@ -47,6 +48,7 @@ ssr = [
     "dep:tower",
     "dep:tower-http",
     "dep:leptos_axum",
+    "dep:sqlx",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
