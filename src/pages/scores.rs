@@ -19,6 +19,8 @@ pub struct Entry {
 
 #[server(GetScores)]
 async fn get_scores(difficulty: Difficulty, size: Size) -> Result<Vec<Entry>, ServerFnError> {
+    let _pool = expect_context::<sqlx::SqlitePool>();
+
     Ok(vec![Entry {
         name: difficulty.to_string(),
         time: size.to_string(),

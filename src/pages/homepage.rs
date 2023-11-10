@@ -55,9 +55,9 @@ pub fn HomePage() -> impl IntoView {
         ",
         );
         TimeoutFuture::new(500).await;
-        username_input.prop("style", "");
+        let _ = username_input.prop("style", "");
         TimeoutFuture::new(2000).await;
-        error_span.prop(
+        let _ = error_span.prop(
             "style",
             "
             visibility: hidden;
