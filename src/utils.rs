@@ -1,15 +1,14 @@
-pub trait Title {
-    type Output;
-
-    fn title(&self) -> Self::Output;
+pub fn to_title(s: &impl ToString) -> String {
+    let mut s = s.to_string();
+    s[..1].make_ascii_uppercase();
+    s
 }
 
-impl<T: ToString> Title for T {
-    type Output = String;
-
-    fn title(&self) -> Self::Output {
-        let mut s = self.to_string();
-        s[..1].make_ascii_uppercase();
-        s
-    }
+pub fn to_time(seconds: i64) -> String {
+    let duration = chrono::Duration::seconds(seconds as i64);
+    format!(
+        "{:02}:{:02}",
+        duration.num_minutes() % 99,
+        duration.num_seconds() % 60
+    )
 }

@@ -8,7 +8,7 @@ use web_sys::HtmlFormElement;
 
 use crate::{
     game_settings::{apply_setting, fetch_setting, Difficulty, Size, Username},
-    utils::Title,
+    utils::to_title,
 };
 
 const USERNAME_BOUNDS: RangeInclusive<usize> = 3..=10;
@@ -172,7 +172,7 @@ pub fn HomePage() -> impl IntoView {
                                             value=curr_difficulty.to_string()
                                             selected=move || difficulty() == *curr_difficulty
                                         >
-                                        {curr_difficulty.title()}
+                                        {to_title(&curr_difficulty)}
                                         </option>
                                     }
                                 }).collect_view()
@@ -198,7 +198,7 @@ pub fn HomePage() -> impl IntoView {
                                             value=curr_size.to_string()
                                             selected=move || size() == *curr_size
                                         >
-                                        {curr_size.title()}
+                                        {to_title(&curr_size)}
                                         </option>
                                     }
                                 }).collect_view()

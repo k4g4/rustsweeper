@@ -6,25 +6,66 @@ use crate::{
     app_error::AppError,
     game_settings::{Difficulty, Size},
     pages::Error,
-    utils::Title,
+    utils::{to_time, to_title},
 };
 
 const MAX_SCORES: usize = 10;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct Entry {
-    name: String,
-    time: String,
+pub struct Score {
+    username: String,
+    time_in_seconds: i64,
 }
 
 #[server(GetScores)]
-async fn get_scores(difficulty: Difficulty, size: Size) -> Result<Vec<Entry>, ServerFnError> {
-    let _pool = expect_context::<sqlx::SqlitePool>();
+async fn get_scores(difficulty: Difficulty, size: Size) -> Result<Vec<Score>, ServerFnError> {
+    let pool = expect_context::<sqlx::SqlitePool>();
+    let (difficulty, size) = (difficulty.to_string(), size.to_string());
 
-    Ok(vec![Entry {
-        name: difficulty.to_string(),
-        time: size.to_string(),
-    }])
+    sqlx::query_as!(
+        Score,
+        "
+            SELECT username, time_in_seconds
+            FROM scores
+            WHERE difficulty=?
+                AND size=?
+            ORDER BY time_in_seconds
+            LIMIT ?
+        ",
+        difficulty,
+        size,
+        MAX_SCORES as i64
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(Into::into)
+}
+
+#[server(PostScore)]
+pub async fn post_score(
+    username: String,
+    time_in_seconds: i64,
+    difficulty: Difficulty,
+    size: Size,
+) -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::SqlitePool>();
+    let (difficulty, size) = (difficulty.to_string(), size.to_string());
+
+    sqlx::query_as!(
+        Score,
+        "
+            INSERT INTO scores(username, time_in_seconds, difficulty, size)
+            VALUES (?, ?, ?, ?)
+        ",
+        username,
+        time_in_seconds,
+        difficulty,
+        size,
+    )
+    .execute(&pool)
+    .await
+    .map(|_| ())
+    .map_err(Into::into)
 }
 
 /// Displays the scoreboard.
@@ -89,7 +130,7 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
                                         selected=move || difficulty == *curr_difficulty
                                         on:click=move |_| set_difficulty(Some(*curr_difficulty))
                                     >
-                                    {curr_difficulty.title()}
+                                    {to_title(&curr_difficulty)}
                                     </option>
                                 }
                             }).collect_view()
@@ -110,7 +151,7 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
                                         selected=move || size == *curr_size
                                         on:click=move |_| set_size(Some(*curr_size))
                                     >
-                                    {curr_size.title()}
+                                    {to_title(&curr_size)}
                                     </option>
                                 }
                             }).collect_view()
@@ -154,26 +195,34 @@ fn Scoreboard() -> impl IntoView {
 }
 
 #[component]
-fn ScoreRows(mut scores: Vec<Entry>) -> impl IntoView {
+fn ScoreRows(mut scores: Vec<Score>) -> impl IntoView {
     scores.resize_with(MAX_SCORES, Default::default);
 
     scores
         .into_iter()
         .zip(1..=MAX_SCORES)
-        .map(|(Entry { name, time }, n)| {
-            view! {
-                <tr class={ if n % 2 == 0 { "even" } else { "odd" }}>
-                    <td class="n">
-                        { n.to_string() }
-                    </td>
-                    <td class="name">
-                        {name}
-                    </td>
-                    <td class="time">
-                        {time}
-                    </td>
-                </tr>
-            }
-        })
+        .map(
+            |(
+                Score {
+                    username,
+                    time_in_seconds,
+                },
+                n,
+            )| {
+                view! {
+                    <tr class={ if n % 2 == 0 { "even" } else { "odd" }}>
+                        <td class="n">
+                            { n.to_string() }
+                        </td>
+                        <td class="name">
+                            {username}
+                        </td>
+                        <td class="time">
+                            { (time_in_seconds > 0).then(|| to_time(time_in_seconds)) }
+                        </td>
+                    </tr>
+                }
+            },
+        )
         .collect_view()
 }

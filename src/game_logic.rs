@@ -1,13 +1,16 @@
 use std::fmt::Display;
 
-use chrono::Duration;
 use gloo_timers::future::TimeoutFuture;
 use leptos::*;
 use leptos_router::*;
 use rand::{seq::SliceRandom, Rng};
 use thiserror::Error;
 
-use crate::game_settings::{Difficulty, ParseDifficultyError, ParseSizeError, Size, Username};
+use crate::{
+    game_settings::{Difficulty, ParseDifficultyError, ParseSizeError, Size, Username},
+    pages::scores::PostScore,
+    utils::to_time,
+};
 
 const ADJACENTS: [(isize, isize); 8] = [
     (-1, -1),
@@ -52,7 +55,7 @@ pub enum GameStatus {
 
 #[derive(Default)]
 pub struct GameInfo {
-    elapsed_seconds: u32,
+    elapsed_seconds: i64,
     cleared: isize,
     clear_total: isize,
     status: GameStatus,
@@ -60,15 +63,8 @@ pub struct GameInfo {
 
 impl GameInfo {
     pub fn to_view(&self) -> impl IntoView {
-        let username = (expect_context::<ReadSignal<Username>>())().name;
-        let time = {
-            let duration = Duration::seconds(self.elapsed_seconds as i64);
-            format!(
-                "{:02}:{:02}",
-                duration.num_minutes() % 99,
-                duration.num_seconds() % 60
-            )
-        };
+        let get_username = move || (expect_context::<ReadSignal<Username>>())().name;
+        let time = to_time(self.elapsed_seconds);
 
         match self.status {
             GameStatus::Started => {
@@ -83,7 +79,7 @@ impl GameInfo {
             }
             GameStatus::GameOver => {
                 view! {
-                    {format!("Game over, {username} 😭")}
+                    {move || format!("Game over, {} 😭", get_username())}
                     <br />
                     "Time - " {time}
                     <br />
@@ -93,7 +89,7 @@ impl GameInfo {
             }
             GameStatus::Victory => {
                 view! {
-                    {format!("You won, {username}! 🥳")}
+                    {move || format!("You won, {}! 🥳", get_username())}
                     <br />
                     "Time - " {time}
                     <br />
@@ -161,6 +157,7 @@ impl CellState {
 }
 
 pub struct GameState {
+    params: GameParams,
     rows: isize,
     columns: isize,
     mines: isize,
@@ -201,7 +198,7 @@ impl GameState {
         set_info.update(|info| info.clear_total = total - mines);
 
         let timer = create_action(move |&()| async move {
-            for second in 0..u32::MAX {
+            for second in 0..i64::MAX {
                 let mut stop = false;
 
                 let disposed = set_info
@@ -225,6 +222,7 @@ impl GameState {
         let (new_game_enabled, set_new_game_enabled) = create_signal(true);
 
         Self {
+            params,
             rows,
             columns,
             cell_states: vec![Default::default(); total as usize],
@@ -342,6 +340,15 @@ impl GameState {
                         ));
                     }
                 }
+
+                let post_score = create_server_action::<PostScore>();
+
+                post_score.dispatch(PostScore {
+                    username: (expect_context::<ReadSignal<Username>>())().name,
+                    time_in_seconds: self.info.with(|info| info.elapsed_seconds),
+                    difficulty: self.params.difficulty,
+                    size: self.params.size,
+                });
             }
 
             GameStatus::GameOver => {
