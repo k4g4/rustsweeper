@@ -117,7 +117,9 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
             <table class="panel-table">
                 <tr class="panel-row">
                     <td>
-                        <select>
+                        <select on:change=move |ev| {
+                            set_difficulty(Some(event_target_value(&ev).parse().expect("value is a difficulty")));
+                        }>
                         {
                             [
                                 Difficulty::Easy,
@@ -138,7 +140,9 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
                         </select>
                     </td>
                     <td>
-                        <select>
+                        <select on:change=move |ev| {
+                            set_size(Some(event_target_value(&ev).parse().expect("value is a size")));
+                        }>
                         {
                             [
                                 Size::Small,
@@ -149,7 +153,6 @@ fn ScoreFilters(difficulty: Difficulty, size: Size) -> impl IntoView {
                                     <option
                                         value=curr_size.to_string()
                                         selected=move || size == *curr_size
-                                        on:click=move |_| set_size(Some(*curr_size))
                                     >
                                     {to_title(&curr_size)}
                                     </option>
