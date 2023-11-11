@@ -5,7 +5,7 @@ pub fn to_title(s: &impl ToString) -> String {
 }
 
 pub fn to_time(seconds: i64) -> String {
-    let duration = chrono::Duration::seconds(seconds as i64);
+    let duration = chrono::Duration::seconds(seconds);
     format!(
         "{:02}:{:02}",
         duration.num_minutes() % 99,
